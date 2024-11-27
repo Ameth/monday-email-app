@@ -1,0 +1,23 @@
+{
+  "name": "monday-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon ./src/index.js"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "@azure/msal-node": "^2.16.2",
+    "@mondaydotcomorg/api": "^4.0.4",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "https": "^1.0.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.16",
+    "nodemon": "^3.1.7",
+    "open": "^10.1.0"
+  }
+}
