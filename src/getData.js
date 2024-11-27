@@ -94,7 +94,7 @@ export async function getSubject({ pulseId }) {
     // console.log(`toEmails: ${public_url}`)
     return { columnValue }
   } catch (error) {
-    console.error('Error al obtener el listado de los correos:', error)
+    console.error('Error al obtener el asunto del correo:', error)
     throw error
   }
 }
@@ -143,7 +143,7 @@ export async function getBodyEmail({ pulseId }) {
     // console.log(`toEmails: ${public_url}`)
     return { columnValue }
   } catch (error) {
-    console.error('Error al obtener el listado de los correos:', error)
+    console.error('Error al obtener el cuerpo del correo:', error)
     throw error
   }
 }
@@ -204,7 +204,7 @@ export async function getBodyEmailWithParams({ pulseId }) {
 
     return { newBody }
   } catch (error) {
-    console.error('Error al obtener el listado de los correos:', error)
+    console.error('Error al obtener el cuerpo del correo con sus parametros:', error)
     throw error
   }
 }
@@ -246,7 +246,7 @@ export async function getAssets({ pulseId }) {
     // console.log(`toEmails: ${public_url}`)
     return { publicUrl, fileName }
   } catch (error) {
-    console.error('Error al obtener el listado de los correos:', error)
+    console.error('Error al obtener los adjuntos del correo:', error)
     throw error
   }
 }
