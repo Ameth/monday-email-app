@@ -4,7 +4,13 @@ import fs from 'fs'
 
 import descargarArchivo from './descargarArchivo.js'
 import { sendEmailWithGraph } from './mailer.js'
-import { getEmails, getSubject, getBodyEmail, getAssets, getBodyEmailWithParams } from './getData.js'
+import {
+  getEmails,
+  getSubject,
+  getAssets,
+  getBodyEmail,
+} from './getData.js'
+import columnMapping from './columnMapping.js'
 
 const app = express()
 
@@ -13,26 +19,63 @@ const PORT_HTTP = 80
 
 app.use(express.json())
 
-app.post('/webhook', async (req, res) => { //info
-  const { boardId, pulseId } = req.body.event
-  const { toEmails, ccEmails, bccEmails } = await getEmails({ pulseId })
-  const { columnValue: subjectEmail } = await getSubject({ pulseId })
-  const { columnValue: bodyEmail } = await getBodyEmail({ pulseId }) //Simple body text
-  const { newBody: bodyEmailWithParams } = await getBodyEmailWithParams({ pulseId })
-  const { publicUrl, fileName } = await getAssets({ pulseId })
-  const rutaArchivo = fileName ? await descargarArchivo(publicUrl, fileName) : null
-  // console.log('Informacion obtenida:', info)
-  const emailData = {
-    send_to: toEmails,
-    copy_to: ccEmails,
-    hidenCopy_to: bccEmails,
-    subject: subjectEmail,
-    body: bodyEmailWithParams,
-    attachment: fileName,
-    attachmentPath: rutaArchivo
+app.post('/webhook', async (req, res) => {
+  //info
+  const { pulseId } = req.body.event
+
+  try {
+    // Obtener los correos
+    const { toEmails, ccEmails, bccEmails } = await getEmails({
+      pulseId,
+      emailsMapping: columnMapping.emails,
+    })
+
+    // Obtener el asunto
+    const { subject: subjectEmail } = await getSubject({
+      pulseId,
+      subjectColumnId: columnMapping.subject,
+      variableMapping: columnMapping.variables,
+    })
+
+    // Obtener el cuerpo del correo con parámetros
+    const { newBody: bodyEmail } = await getBodyEmail({
+      pulseId,
+      bodyColumnId: columnMapping.bodyTemplate,
+      variableMapping: columnMapping.variables,
+    })
+
+    // Obtener los archivos adjuntos
+    const assets = await getAssets({ pulseId });
+
+    // Preparar datos del correo
+    const emailData = {
+      send_to: toEmails,
+      copy_to: ccEmails,
+      hidenCopy_to: bccEmails,
+      subject: subjectEmail,
+      body: bodyEmail,
+      attachment: [],
+      attachmentPath: [],
+    }
+
+    //Generar los archivos adjuntos
+    for (let asset of assets) {
+      const { public_url: publicUrl, name: fileName } = asset;
+      const rutaArchivo = fileName ? await descargarArchivo(publicUrl, fileName) : null;
+      
+      if (rutaArchivo) {
+        emailData.attachment.push(fileName); // Agregar nombre del archivo
+        emailData.attachmentPath.push(rutaArchivo); // Agregar ruta local del archivo
+      }
+    }
+
+    // Enviar la respuesta
+    const statusMail = await sendEmailWithGraph({ emailData })
+    res.json(emailData)
+  } catch (error) {
+    console.error('Error procesando el webhook:', error)
+    res.status(500).json({ error: 'Error procesando el webhook' })
   }
-  const statusMail = await sendEmailWithGraph({ emailData })
-  res.json(emailData)
 })
 
 app.get('/code', (req, res) => {
@@ -41,7 +84,7 @@ app.get('/code', (req, res) => {
 })
 
 app.get('/', (req, res) => {
-  res.json({ message: "Ready" })
+  res.json({ message: 'Ready' })
 })
 
 // app.post('/webhook', (req, res) => {
@@ -57,7 +100,7 @@ app.get('/', (req, res) => {
 
 const sslOptions = {
   key: fs.readFileSync('./src/ssl/sefsigned.key'),
-  cert: fs.readFileSync('./src/ssl/selfsigned.crt')
+  cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
 }
 
 https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {

@@ -5,246 +5,259 @@ dotenv.config()
 
 const TOKEN = process.env.TOKEN_MONDAY
 
-export async function getEmails({ pulseId }) {
+export async function getEmails({ pulseId, emailsMapping }) {
   try {
-
-
-    //Consultamos el archivo en la API de Monday
+    const emailColumns = Object.values(emailsMapping)
     const query = `
-            {
-                items(ids: ${pulseId}) {
-                    column_values(ids:[ "mirror__1", "mirror6__1","mirror64__1"]) {
-                    ... on MirrorValue {
-                            display_value
-                            id
-                        }
-                    }
-                }
+      {
+        items(ids: ${pulseId}) {
+          column_values(ids:[${emailColumns
+            .map((id) => `"${id}"`)
+            .join(',')}]) {
+            ... on MirrorValue {
+              display_value
+              id
             }
-          `
-    //Hacemos la petición POST a la API de Monday
+          }
+        }
+      }
+    `
+    // console.log(query)
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
       },
-      body: JSON.stringify({
-        query: query,
-      }),
+      body: JSON.stringify({ query }),
     })
 
-    // Parseamos el resultado de la petición
     const res = await response.json()
-
-    // Retornamos el enlace autorizado al archivo
-    // console.log(res.data.items[0])
-    const toEmails = res.data.items[0].column_values[0].display_value
-    const ccEmails = res.data.items[0].column_values[1].display_value
-    const bccEmails = res.data.items[0].column_values[2].display_value
-    // console.log(`toEmails: ${public_url}`)
-    return { toEmails, ccEmails, bccEmails }
+    const columnValues = res.data.items[0].column_values
+    return {
+      toEmails:
+        columnValues.find((col) => col.id === emailsMapping.to)
+          ?.display_value || '',
+      ccEmails:
+        columnValues.find((col) => col.id === emailsMapping.cc)
+          ?.display_value || '',
+      bccEmails:
+        columnValues.find((col) => col.id === emailsMapping.bcc)
+          ?.display_value || '',
+    }
   } catch (error) {
-    console.error('Error al obtener el listado de los correos:', error)
+    console.error('Error al obtener los correos:', error)
     throw error
   }
 }
 
-export async function getSubject({ pulseId }) {
+export async function getSubject({
+  pulseId,
+  subjectColumnId,
+  variableMapping,
+}) {
   try {
-
-
-    //Consultamos el valor de la columna por su ID
     const query = `
-        {
-          items(ids: ${pulseId}) {
-            column_values(ids: "long_text__1") {
-              column {
-                id
-                title
-              }
+      {
+        items(ids: ${pulseId}) {
+          column_values {
+            column {
               id
-              type
-              value
+              title
             }
+            id
+            type
+            value
           }
+          name
         }
-          `
-    //Hacemos la petición POST a la API de Monday
+      }
+    `
+
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
       },
-      body: JSON.stringify({
-        query: query,
-      }),
+      body: JSON.stringify({ query }),
     })
 
-    // Parseamos el resultado de la petición
     const res = await response.json()
+    const item = res.data.items[0]
+    const columnValues = item.column_values.reduce((acc, col) => {
+      acc[col.id] = col.value ? JSON.parse(col.value) : null
+      return acc
+    }, {})
 
-    // Retornamos el enlace autorizado al archivo
-    // console.log(res.data.items[0])
-    const rawValue = res.data.items[0].column_values[0].value
-    const jsonValue = JSON.parse(rawValue)
-    // console.log(jsonValue)
-    const columnValue = jsonValue?.text
-    // console.log(`toEmails: ${public_url}`)
-    return { columnValue }
+    const rawSubjectText = columnValues[subjectColumnId]?.text || ''
+
+    // Recuperamos las variables que no están dentro de column_values (por ejemplo, 'name')
+    const variables = Object.entries(variableMapping).reduce(
+      (acc, [key, columnId]) => {
+        // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
+        if (key === 'name') {
+          acc[key] = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
+        } else {
+          const columnValue = columnValues[columnId]
+
+          // console.log(columnValue)
+
+          // Comprobamos el tipo de la columna para extraer el valor correcto
+          if (columnValue) {
+            if (columnValue.files && columnValue.files.length > 0) {
+              // Si la columna es de tipo 'file', extraemos el nombre del archivo
+              acc[key] = columnValue.files[0].name
+            } else if (columnValue.text) {
+              // Si la columna tiene 'text', usamos el texto directamente
+              acc[key] = columnValue.text
+            } else if (columnValue.date) {
+              // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
+              acc[key] = columnValue.date
+            } else {
+              // Si la columna es de otro tipo, usamos su valor como está
+              acc[key] = columnValue || `{${key}}`
+            }
+          } else {
+            // Si no encontramos la columna o su valor, dejamos la variable intacta
+            acc[key] = `{${key}}`
+          }
+        }
+        return acc
+      },
+      {}
+    )
+
+    // Realizamos el reemplazo de las variables en el texto del asunto
+    const subject = rawSubjectText.replace(
+      /\{(.*?)\}/g,
+      (_, variable) => variables[variable] || `{${variable}}`
+    )
+
+    return { subject }
   } catch (error) {
-    console.error('Error al obtener el asunto del correo:', error)
+    console.error('Error al obtener el asunto:', error)
     throw error
   }
 }
 
-export async function getBodyEmail({ pulseId }) {
+export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
   try {
-
-
-    //Consultamos el valor de la columna por su ID
     const query = `
-        {
-          items(ids: ${pulseId}) {
-            column_values(ids: "texto_largo6__1") {
-              column {
-                id
-                title
-              }
+      {
+        items(ids: ${pulseId}) {
+          column_values {
+            column {
               id
-              type
-              value
+              title
             }
+            id
+            type
+            value
           }
+          name
         }
-          `
-    //Hacemos la petición POST a la API de Monday
+      }
+    `
+
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
       },
-      body: JSON.stringify({
-        query: query,
-      }),
+      body: JSON.stringify({ query }),
     })
 
-    // Parseamos el resultado de la petición
     const res = await response.json()
+    const item = res.data.items[0]
+    const columnValues = item.column_values.reduce((acc, col) => {
+      acc[col.id] = col.value ? JSON.parse(col.value) : null
+      return acc
+    }, {})
 
-    // Retornamos el enlace autorizado al archivo
-    // console.log(res.data.items[0])
-    const rawValue = res.data.items[0].column_values[0].value
-    const jsonValue = JSON.parse(rawValue)
-    // console.log(jsonValue)
-    const columnValue = jsonValue?.text
-    // console.log(`toEmails: ${public_url}`)
-    return { columnValue }
+    const rawBodyText = columnValues[bodyColumnId]?.text || ''
+
+    // console.log(columnValues)
+    // console.log('****************************')
+
+    // Recuperamos las variables que no están dentro de column_values (por ejemplo, 'name')
+    const variables = Object.entries(variableMapping).reduce(
+      (acc, [key, columnId]) => {
+        // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
+        if (key === 'name') {
+          acc[key] = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
+        } else {
+          const columnValue = columnValues[columnId]
+
+          // console.log(columnValue)
+
+          // Comprobamos el tipo de la columna para extraer el valor correcto
+          if (columnValue) {
+            if (columnValue.files && columnValue.files.length > 0) {
+              // Si la columna es de tipo 'file', extraemos el nombre del archivo
+              acc[key] = columnValue.files[0].name
+            } else if (columnValue.text) {
+              // Si la columna tiene 'text', usamos el texto directamente
+              acc[key] = columnValue.text
+            } else if (columnValue.date) {
+              // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
+              acc[key] = columnValue.date
+            } else {
+              // Si la columna es de otro tipo, usamos su valor como está
+              acc[key] = columnValue || `{${key}}`
+            }
+          } else {
+            // Si no encontramos la columna o su valor, dejamos la variable intacta
+            acc[key] = `{${key}}`
+          }
+        }
+        return acc
+      },
+      {}
+    )
+
+    // console.log('****************************')
+    // console.log(variables)
+
+    // Realizamos el reemplazo de las variables en el texto del cuerpo
+    const newBody = rawBodyText.replace(
+      /\{(.*?)\}/g,
+      (_, variable) => variables[variable] || `{${variable}}`
+    )
+
+    return { newBody }
   } catch (error) {
     console.error('Error al obtener el cuerpo del correo:', error)
     throw error
   }
 }
 
-export async function getBodyEmailWithParams({ pulseId }) {
-  try {
-
-
-    //Consultamos el valor de la columna por su ID
-    const query = `
-        {
-          items(ids: ${pulseId}) {
-            column_values (ids: ["files__1","texto_largo6__1"]) {
-              column {
-                id
-                title
-              }
-              id
-              type
-              value
-            }
-            name
-          }
-        }
-          `
-    //Hacemos la petición POST a la API de Monday
-    const response = await fetch('https://api.monday.com/v2', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${TOKEN}`,
-      },
-      body: JSON.stringify({
-        query: query,
-      }),
-    })
-
-    // Parseamos el resultado de la petición
-    const res = await response.json()
-
-    //Name of item
-    const itemName = res.data.items[0].name
-
-    //File
-    const filerawValue = res.data.items[0].column_values[0].value
-    const filejsonValue = JSON.parse(filerawValue)
-    const fileName = filejsonValue?.files[0]?.name
-
-    //Body text
-    const rawValue = res.data.items[0].column_values[1].value
-    const jsonValue = JSON.parse(rawValue)
-    const bodyText = jsonValue?.text
-
-    //Reemplazamos los parametros del text
-    const newBody = bodyText?.replaceAll("{name}", itemName).replaceAll("{file_name}", fileName)
-
-    // console.log({itemName,fileName,bodyText,newValue})
-
-    return { newBody }
-  } catch (error) {
-    console.error('Error al obtener el cuerpo del correo con sus parametros:', error)
-    throw error
-  }
-}
-
 export async function getAssets({ pulseId }) {
   try {
-
-
-    //Consultamos el valor de la columna por su ID
     const query = `
          {
             items (ids: ${pulseId}) {
                 assets {
-                  public_url 
+                  public_url
                   name
                 }
             }
         }
-          `
-    //Hacemos la petición POST a la API de Monday
+    `
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
       },
-      body: JSON.stringify({
-        query: query,
-      }),
+      body: JSON.stringify({ query }),
     })
 
-    // Parseamos el resultado de la petición
     const res = await response.json()
     const assets = res.data?.items?.[0].assets || []
 
-    // Retornamos el enlace autorizado al archivo
-    // console.log(res.data.items[0])
-    const { public_url: publicUrl = null, name: fileName = null } = assets[0] || {}
-    // console.log(`toEmails: ${public_url}`)
-    return { publicUrl, fileName }
+    return assets // Retorna todos los archivos encontrados
   } catch (error) {
     console.error('Error al obtener los adjuntos del correo:', error)
     throw error

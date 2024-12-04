@@ -1,4 +1,3 @@
-import { ConfidentialClientApplication } from '@azure/msal-node'
 import axios from 'axios'
 import fs from 'fs'
 import dotenv from 'dotenv'
@@ -80,17 +79,11 @@ export const sendEmailWithGraph = async ({ emailData }) => {
     }
 
     // Prepare attachments if provided
-    const attachments = attachment
-      ? [
-          {
-            '@odata.type': '#microsoft.graph.fileAttachment',
-            name: attachment, // File name
-            contentBytes: Buffer.from(fs.readFileSync(attachmentPath)).toString(
-              'base64'
-            ),
-          },
-        ]
-      : []
+    const attachments = attachmentPath.map((path, index) => ({
+      '@odata.type': '#microsoft.graph.fileAttachment',
+      name: attachment[index], // Nombre del archivo
+      contentBytes: Buffer.from(fs.readFileSync(path)).toString('base64'), // Convertir el archivo a Base64
+    }));
 
     // Build the emailSendData JSON
     const emailSendData = {
