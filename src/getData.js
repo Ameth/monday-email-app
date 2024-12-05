@@ -5,6 +5,46 @@ dotenv.config()
 
 const TOKEN = process.env.TOKEN_MONDAY
 
+const replaceVariables = ({ variableMapping, columnValues, item }) => {
+
+  const variables = Object.entries(variableMapping).reduce(
+    (acc, [key, columnId]) => {
+      // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
+      if (key === 'name') {
+        acc[key] = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
+      } else {
+        const columnValue = columnValues[columnId]
+
+        // console.log(columnValue)
+
+        // Comprobamos el tipo de la columna para extraer el valor correcto
+        if (columnValue) {
+          if (columnValue.files && columnValue.files.length > 0) {
+            // Si la columna es de tipo 'file', extraemos el nombre del archivo
+            acc[key] = columnValue.files[0].name
+          } else if (columnValue.text) {
+            // Si la columna tiene 'text', usamos el texto directamente
+            acc[key] = columnValue.text
+          } else if (columnValue.date) {
+            // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
+            acc[key] = columnValue.date
+          } else {
+            // Si la columna es de otro tipo, usamos su valor como está
+            acc[key] = columnValue || `{${key}}`
+          }
+        } else {
+          // Si no encontramos la columna o su valor, dejamos la variable intacta
+          acc[key] = `{${key}}`
+        }
+      }
+      return acc
+    },
+    {}
+  )
+
+  return variables
+}
+
 export async function getEmails({ pulseId, emailsMapping }) {
   try {
     const emailColumns = Object.values(emailsMapping)
@@ -90,43 +130,12 @@ export async function getSubject({
       return acc
     }, {})
 
+    // console.log(columnValues)
+
     const rawSubjectText = columnValues[subjectColumnId]?.text || ''
 
     // Recuperamos las variables que no están dentro de column_values (por ejemplo, 'name')
-    const variables = Object.entries(variableMapping).reduce(
-      (acc, [key, columnId]) => {
-        // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
-        if (key === 'name') {
-          acc[key] = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
-        } else {
-          const columnValue = columnValues[columnId]
-
-          // console.log(columnValue)
-
-          // Comprobamos el tipo de la columna para extraer el valor correcto
-          if (columnValue) {
-            if (columnValue.files && columnValue.files.length > 0) {
-              // Si la columna es de tipo 'file', extraemos el nombre del archivo
-              acc[key] = columnValue.files[0].name
-            } else if (columnValue.text) {
-              // Si la columna tiene 'text', usamos el texto directamente
-              acc[key] = columnValue.text
-            } else if (columnValue.date) {
-              // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
-              acc[key] = columnValue.date
-            } else {
-              // Si la columna es de otro tipo, usamos su valor como está
-              acc[key] = columnValue || `{${key}}`
-            }
-          } else {
-            // Si no encontramos la columna o su valor, dejamos la variable intacta
-            acc[key] = `{${key}}`
-          }
-        }
-        return acc
-      },
-      {}
-    )
+    const variables = replaceVariables({ variableMapping, columnValues, item })
 
     // Realizamos el reemplazo de las variables en el texto del asunto
     const subject = rawSubjectText.replace(
@@ -182,40 +191,7 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
     // console.log('****************************')
 
     // Recuperamos las variables que no están dentro de column_values (por ejemplo, 'name')
-    const variables = Object.entries(variableMapping).reduce(
-      (acc, [key, columnId]) => {
-        // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
-        if (key === 'name') {
-          acc[key] = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
-        } else {
-          const columnValue = columnValues[columnId]
-
-          // console.log(columnValue)
-
-          // Comprobamos el tipo de la columna para extraer el valor correcto
-          if (columnValue) {
-            if (columnValue.files && columnValue.files.length > 0) {
-              // Si la columna es de tipo 'file', extraemos el nombre del archivo
-              acc[key] = columnValue.files[0].name
-            } else if (columnValue.text) {
-              // Si la columna tiene 'text', usamos el texto directamente
-              acc[key] = columnValue.text
-            } else if (columnValue.date) {
-              // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
-              acc[key] = columnValue.date
-            } else {
-              // Si la columna es de otro tipo, usamos su valor como está
-              acc[key] = columnValue || `{${key}}`
-            }
-          } else {
-            // Si no encontramos la columna o su valor, dejamos la variable intacta
-            acc[key] = `{${key}}`
-          }
-        }
-        return acc
-      },
-      {}
-    )
+    const variables = replaceVariables({ variableMapping, columnValues, item })
 
     // console.log('****************************')
     // console.log(variables)
