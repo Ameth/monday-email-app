@@ -1,21 +1,27 @@
 import express from 'express'
 import https from 'https'
 import fs from 'fs'
+import cors from 'cors'
 
 import descargarArchivo from './descargarArchivo.js'
 import { sendEmailWithGraph } from './mailer.js'
-import {
-  getEmails,
-  getSubject,
-  getAssets,
-  getBodyEmail,
-} from './getData.js'
+import { getEmails, getSubject, getAssets, getBodyEmail } from './getData.js'
 import columnMapping from './columnMapping.js'
 
 const app = express()
 
 const PORT_HTTPS = 443
 const PORT_HTTP = 80
+
+// Habilitar CORS
+app.use(cors()); // Permite solicitudes desde cualquier origen (para desarrollo)
+
+// También puedes configurarlo para permitir orígenes específicos:
+// app.use(cors({
+//   origin: 'http://localhost:3000', // Reemplaza con la URL de tu frontend
+//   methods: ['GET', 'POST'], // Métodos permitidos
+//   allowedHeaders: ['Content-Type'], // Headers permitidos
+// }));
 
 app.use(express.json())
 
@@ -45,7 +51,7 @@ app.post('/webhook', async (req, res) => {
     })
 
     // Obtener los archivos adjuntos
-    const assets = await getAssets({ pulseId });
+    const assets = await getAssets({ pulseId })
 
     // Preparar datos del correo
     const emailData = {
@@ -60,12 +66,14 @@ app.post('/webhook', async (req, res) => {
 
     //Generar los archivos adjuntos
     for (let asset of assets) {
-      const { public_url: publicUrl, name: fileName } = asset;
-      const rutaArchivo = fileName ? await descargarArchivo(publicUrl, fileName) : null;
-      
+      const { public_url: publicUrl, name: fileName } = asset
+      const rutaArchivo = fileName
+        ? await descargarArchivo(publicUrl, fileName)
+        : null
+
       if (rutaArchivo) {
-        emailData.attachment.push(fileName); // Agregar nombre del archivo
-        emailData.attachmentPath.push(rutaArchivo); // Agregar ruta local del archivo
+        emailData.attachment.push(fileName) // Agregar nombre del archivo
+        emailData.attachmentPath.push(rutaArchivo) // Agregar ruta local del archivo
       }
     }
 
