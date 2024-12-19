@@ -14,14 +14,15 @@ const PORT_HTTPS = 443
 const PORT_HTTP = 80
 
 // Habilitar CORS
-app.use(cors()); // Permite solicitudes desde cualquier origen (para desarrollo)
+// app.use(cors()); // Permite solicitudes desde cualquier origen (para desarrollo)
+app.use(cors({
+  origin: '*', // Permitir solicitudes desde cualquier origen (puedes limitar a dominios específicos)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
+  allowedHeaders: ['Content-Type', 'Authorization'], // Cabeceras permitidas
+}));
+app.options('*', cors());
 
-// También puedes configurarlo para permitir orígenes específicos:
-// app.use(cors({
-//   origin: 'http://localhost:3000', // Reemplaza con la URL de tu frontend
-//   methods: ['GET', 'POST'], // Métodos permitidos
-//   allowedHeaders: ['Content-Type'], // Headers permitidos
-// }));
+app.use(express.json())
 
 app.use(express.json())
 
