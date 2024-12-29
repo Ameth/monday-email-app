@@ -1,12 +1,17 @@
 import express from 'express'
-import https from 'https'
+// import https from 'https'
 import bodyParser from 'body-parser'
-import fs from 'fs'
+// import fs from 'fs'
 import cors from 'cors'
 
 import descargarArchivo from '../src/descargarArchivo.js'
 import { exchangeCodeForTokens, sendEmailWithGraph } from '../src/mailer.js'
-import { getEmails, getSubject, getAssets, getBodyEmail } from '../src/getData.js'
+import {
+  getEmails,
+  getSubject,
+  getAssets,
+  getBodyEmail,
+} from '../src/getData.js'
 import columnMapping from '../src/columnMapping.js'
 import { readTokens } from '../src/tokenUtils.js'
 
@@ -38,9 +43,11 @@ app.use(express.json())
 
 app.use(bodyParser.json())
 
-app.get('/user-info', (req, res) => {
+app.get('/user-info', async (req, res) => {
   try {
-    const { display_name, surname, given_name, email } = readTokens()
+    const tokens = await readTokens()
+    const { display_name, surname, given_name, email } = tokens
+
     res.status(200).json({
       displayName: display_name,
       surname,
@@ -162,7 +169,6 @@ app.get('/', (req, res) => {
 //   res.status(200).send(req.body)
 // })
 
-
 // Configurar el puerto y los certificados SSL, luego iniciar el servidor
 // const sslOptions = {
 //   key: fs.readFileSync('./src/ssl/sefsigned.key'),
@@ -182,4 +188,4 @@ app.get('/', (req, res) => {
 // console.log('REDIRECT_URI:', process.env.REDIRECT_URI);
 
 // Exportar como función serverless
-export default app;
+export default app

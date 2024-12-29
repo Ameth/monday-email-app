@@ -1,5 +1,3 @@
-import db from '../firebaseConfig.js'
-
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
@@ -16,27 +14,34 @@ const getTokenFilePath = () => {
   return path.resolve(__dirname, './tokens', `user.json`)
 }
 
-// Leer tokens desde el documento "default"
-export const readTokens = async () => {
+// Leer tokens de un usuario
+export const readTokens = () => {
+  const filePath = getTokenFilePath()
+
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`Archivos de tokens no encontrados.`)
+  }
+
   try {
-    const doc = await db.collection('tokens').doc('default').get() // Lee siempre el documento 'default'
-    if (!doc.exists) {
-      throw new Error('No se encontraron tokens almacenados.')
-    }
-    return doc.data()
+    const tokens = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+    return tokens
   } catch (error) {
-    console.error(`Error al leer los tokens:`, error)
-    throw new Error('Error al leer los tokens.')
+    console.error(`Error al leer el archivo de tokens.`, error)
+    throw new Error(`Error al leer el archivo de tokens.`, error)
   }
 }
 
 // Guardar tokens de un usuario
-export const saveTokens = async (tokens) => {
-  try {
-    // console.log('Intentando guardar tokens:', tokens);
+export const saveTokens = (tokens) => {
+  const filePath = getTokenFilePath()
 
-    await db.collection('tokens').doc('default').set(tokens) // Guarda siempre bajo el ID 'default'
-    console.log('Tokens guardados correctamente en Firestore.')
+  try {
+    // Agregar el correo del usuario a los tokens almacenados
+    const tokensToSave = {
+      ...tokens,
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(tokensToSave, null, 2))
   } catch (error) {
     console.error(`Error al guardar los tokens:`, error)
     throw new Error('Error al guardar los tokens.')

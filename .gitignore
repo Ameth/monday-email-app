@@ -3,6 +3,7 @@ dist/
 .output/
 src/attachments/*
 src/tokens/*
+src/config/serviceAccountKey.json
 
 # dependencies
 node_modules/

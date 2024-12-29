@@ -74,7 +74,7 @@ export const exchangeCodeForTokens = async ({ code }) => {
     }
 
     // Almacenar los tokens asociados al email del usuario
-    saveTokens(userTokens)
+    await saveTokens(userTokens)
 
     // Enviar tokens al frontend o almacenarlos
     return { access_token, refresh_token, expires_in, email: userData.email }
@@ -95,7 +95,7 @@ export const exchangeCodeForTokens = async ({ code }) => {
 }
 
 // Función para obtener un nuevo Access Token
-const getNewAccessToken = async ({ refresh_token }) => {
+const getNewAccessToken = async ({ refresh_token, email }) => {
   try {
     const data = new URLSearchParams({
       client_id: process.env.CLIENT_ID,
@@ -128,10 +128,10 @@ const getNewAccessToken = async ({ refresh_token }) => {
     )
 
     // Actualiza el archivo con el nuevo accessToken y refreshToken
-    const currentTokens = readTokens()
+    const currentTokens = await readTokens()
     currentTokens.access_token = access_token
     currentTokens.refresh_token = newRefreshToken
-    saveTokens(currentTokens)
+    await saveTokens(currentTokens)
 
     return access_token
   } catch (error) {
@@ -144,10 +144,10 @@ const getNewAccessToken = async ({ refresh_token }) => {
 }
 
 // Función para enviar el correo
-export const sendEmailWithGraph = async ({ emailData, userEmail = null }) => {
+export const sendEmailWithGraph = async ({ emailData}) => {
   try {
     // Cargar los tokens del usuario
-    let { access_token, refresh_token, email } = readTokens()
+    let { access_token, refresh_token, email } = await readTokens()
 
     if (!email) {
       throw new Error('El correo del usuario no está almacenado.')
@@ -180,7 +180,7 @@ export const sendEmailWithGraph = async ({ emailData, userEmail = null }) => {
       console.log('Access Token expirado. Renovando...')
       // accessToken = await getNewAccessToken(refreshToken)
       const newAccessToken = await getNewAccessToken({
-        refresh_token,
+        refresh_token
       })
 
       access_token = newAccessToken
