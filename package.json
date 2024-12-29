@@ -1,0 +1,29 @@
+{
+  "name": "monday-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon ./src/index.js"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "@azure/msal-browser": "^3.28.0",
+    "@azure/msal-node": "^2.16.2",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@mondaydotcomorg/api": "^4.0.4",
+    "axios": "^1.7.7",
+    "body-parser": "^1.20.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "firebase": "^11.1.0",
+    "https": "^1.0.0",
+    "isomorphic-fetch": "^3.0.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.16",
+    "nodemon": "^3.1.7",
+    "open": "^10.1.0"
+  }
+}
