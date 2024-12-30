@@ -131,17 +131,17 @@ app.post('/webhook', async (req, res) => {
       }
 
       //Generar los archivos adjuntos
-      // for (let asset of assets) {
-      //   const { public_url: publicUrl, name: fileName } = asset
-      //   const rutaArchivo = fileName
-      //     ? await descargarArchivo(publicUrl, fileName)
-      //     : null
+      for (let asset of assets) {
+        const { public_url: publicUrl, name: fileName } = asset
+        const rutaArchivo = fileName
+          ? await descargarArchivo(publicUrl, fileName)
+          : null
 
-      //   if (rutaArchivo) {
-      //     emailData.attachment.push(fileName) // Agregar nombre del archivo
-      //     emailData.attachmentPath.push(rutaArchivo) // Agregar ruta local del archivo
-      //   }
-      // }
+        if (rutaArchivo) {
+          emailData.attachment.push(fileName) // Agregar nombre del archivo
+          emailData.attachmentPath.push(rutaArchivo) // Agregar ruta local del archivo
+        }
+      }
 
       // Enviar la respuesta
       const statusMail = await sendEmailWithGraph({ emailData })
