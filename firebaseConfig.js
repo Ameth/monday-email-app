@@ -2,6 +2,9 @@ import admin from 'firebase-admin';
 import { fileURLToPath } from 'url';
 import fs from 'fs'
 import path from 'path';
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 // Definir __dirname para ES6
 const __filename = fileURLToPath(import.meta.url);

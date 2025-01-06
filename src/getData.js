@@ -6,12 +6,11 @@ dotenv.config()
 const TOKEN = process.env.TOKEN_MONDAY
 
 const replaceVariables = ({ variableMapping, columnValues, item }) => {
-
   const variables = Object.entries(variableMapping).reduce(
     (acc, [key, columnId]) => {
       // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
       if (key === 'name') {
-        acc[key] = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
+        acc[key].id = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
       } else {
         const columnValue = columnValues[columnId]
 
@@ -21,16 +20,16 @@ const replaceVariables = ({ variableMapping, columnValues, item }) => {
         if (columnValue) {
           if (columnValue.files && columnValue.files.length > 0) {
             // Si la columna es de tipo 'file', extraemos el nombre del archivo
-            acc[key] = columnValue.files[0].name
+            acc[key].id = columnValue.files[0].name
           } else if (columnValue.text) {
             // Si la columna tiene 'text', usamos el texto directamente
-            acc[key] = columnValue.text
+            acc[key].id = columnValue.text
           } else if (columnValue.date) {
             // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
-            acc[key] = columnValue.date
+            acc[key].id = columnValue.date
           } else {
             // Si la columna es de otro tipo, usamos su valor como está
-            acc[key] = columnValue || `{${key}}`
+            acc[key].id = columnValue || `{${key}}`
           }
         } else {
           // Si no encontramos la columna o su valor, dejamos la variable intacta
@@ -236,6 +235,43 @@ export async function getAssets({ pulseId }) {
     return assets // Retorna todos los archivos encontrados
   } catch (error) {
     console.error('Error al obtener los adjuntos del correo:', error)
+    throw error
+  }
+}
+
+export async function getColumnsList({ pulseId }) {
+  try {
+    const query = `
+      {
+        items(ids: ${pulseId}) {
+          column_values {
+            column {
+              id
+              title
+            }
+            id
+            type
+            value
+          }
+          name
+        }
+      }
+    `
+
+    const response = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: JSON.stringify({ query }),
+    })
+
+    const res = await response.json()
+    const items = res.data
+    return items
+  } catch (error) {
+    console.error('Error al obtener el listado de las columnas:', error)
     throw error
   }
 }

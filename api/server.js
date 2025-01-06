@@ -1,7 +1,7 @@
 import express from 'express'
-// import https from 'https'
+import https from 'https'
 import bodyParser from 'body-parser'
-// import fs from 'fs'
+import fs from 'fs'
 import cors from 'cors'
 
 import descargarArchivo from '../src/descargarArchivo.js'
@@ -11,11 +11,13 @@ import {
   getSubject,
   getAssets,
   getBodyEmail,
+  getColumnsList,
 } from '../src/getData.js'
-import columnMapping from '../src/columnMapping.js'
+import columnMapping from '../src/config/columnMapping.js'
 import { readTokens } from '../src/tokenUtils.js'
+import { getVariables } from '../src/utils/getVariables.js'
 
-import validateToken from '../src/middlewares/validateToken.js'
+// import validateToken from '../src/middlewares/validateToken.js'
 
 const app = express()
 
@@ -83,6 +85,28 @@ app.post('/exchange-code', async (req, res) => {
     res.status(500).json({
       error: error.message || 'Ocurrió un error al procesar la solicitud.',
     })
+  }
+})
+
+app.get('/column-mapping', async (req, res) => {
+  try {
+    const variables = await getVariables()
+    res.status(200).json(variables)
+  } catch (error) {
+    console.error('Error al obtener el mapeo de columnas:', error)
+    res.status(500).json({ error: 'Error al obtener las variables' })
+  }
+})
+
+app.get('/column-list', async (req, res) => {
+  try {
+    const items = await getColumnsList({ pulseId: 7534845375 })
+    res.status(200).json(items)
+  } catch (error) {
+    console.error('Error al obtener el listado de las columnas:', error)
+    res
+      .status(500)
+      .json({ error: 'Error al obtener el listado de las columnas' })
   }
 })
 

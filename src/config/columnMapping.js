@@ -7,10 +7,10 @@ const columnMapping = {
   subject: 'long_text__1',
   bodyTemplate: 'texto_largo6__1',
   variables: {
-    name: 'name',
-    file_name: 'files__1',
-    file_date: 'date4',
-    notas: 'texto9__1'
+    name: { id: 'name', title: 'name' },
+    file_name: { id: 'files__1', title: 'Files' },
+    file_date: { id: 'date4', title: 'Send Date' },
+    notas: { id: 'texto9__1', title: 'Notas' },
   },
 }
 
