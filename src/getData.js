@@ -239,21 +239,16 @@ export async function getAssets({ pulseId }) {
   }
 }
 
-export async function getColumnsList({ pulseId }) {
+export async function getColumnsList({ boardId }) {
   try {
     const query = `
       {
-        items(ids: ${pulseId}) {
-          column_values {
-            column {
-              id
-              title
-            }
+        boards (ids: ${boardId}) {
+          columns {
             id
+            title
             type
-            value
-          }
-          name
+          }		
         }
       }
     `
@@ -268,8 +263,8 @@ export async function getColumnsList({ pulseId }) {
     })
 
     const res = await response.json()
-    const items = res.data
-    return items
+    const columns = res.data.boards ? res.data.boards[0] : []
+    return columns
   } catch (error) {
     console.error('Error al obtener el listado de las columnas:', error)
     throw error

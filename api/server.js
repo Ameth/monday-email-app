@@ -15,7 +15,7 @@ import {
 } from '../src/getData.js'
 import columnMapping from '../src/config/columnMapping.js'
 import { readTokens } from '../src/tokenUtils.js'
-import { getVariables } from '../src/utils/getVariables.js'
+import { getVariables, updateVariables } from '../src/utils/mappingVariables.js'
 
 // import validateToken from '../src/middlewares/validateToken.js'
 
@@ -88,25 +88,45 @@ app.post('/exchange-code', async (req, res) => {
   }
 })
 
-app.get('/column-mapping', async (req, res) => {
+app.get('/column-mapping/:boardId', async (req, res) => {
   try {
-    const variables = await getVariables()
+    const { boardId } = req.params
+    const variables = await getVariables({ boardId })
     res.status(200).json(variables)
   } catch (error) {
     console.error('Error al obtener el mapeo de columnas:', error)
-    res.status(500).json({ error: 'Error al obtener las variables' })
+    res
+      .status(500)
+      .json({ error: 'Error al obtener las variables', message: error.message })
   }
 })
 
-app.get('/column-list', async (req, res) => {
+app.put('/column-mapping/:boardId', async (req, res) => {
   try {
-    const items = await getColumnsList({ pulseId: 7534845375 })
-    res.status(200).json(items)
+    const { boardId } = req.params
+    const mappingData = req.body.mapping
+    const result = await updateVariables({ boardId, mappingData })
+    res.status(200).json(result)
+  } catch (error) {
+    console.error('Error actualizando el mappingColumn:', error)
+    res.status(500).json({
+      error: 'Error actualizando el el mapeo de columnas',
+      message: error.message,
+    })
+  }
+})
+
+app.get('/column-list/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params
+    const columns = await getColumnsList({ boardId })
+    res.status(200).json(columns)
   } catch (error) {
     console.error('Error al obtener el listado de las columnas:', error)
-    res
-      .status(500)
-      .json({ error: 'Error al obtener el listado de las columnas' })
+    res.status(500).json({
+      error: 'Error al obtener el listado de las columnas',
+      message: error.message,
+    })
   }
 })
 
