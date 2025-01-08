@@ -23,11 +23,15 @@ const columnMapping = {
         },
         "notes": {
           "id": "texto9__1",
-          "title": "Notes"
+          "title": "Notes for email"
         },
         "estado": {
           "id": "status",
           "title": "Status"
+        },
+        "last_send": {
+          "id": "fecha__1",
+          "title": "Last send mail"
         }
       }
     },

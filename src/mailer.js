@@ -2,7 +2,7 @@ import axios from 'axios'
 import fs from 'fs'
 import dotenv from 'dotenv'
 
-import { readTokens, saveTokens } from './tokenUtils.js'
+import { readTokens, saveTokens } from './utils/tokenUtils.js'
 
 // Carga las variables del archivo .env
 dotenv.config()

@@ -6,34 +6,27 @@ dotenv.config()
 const TOKEN = process.env.TOKEN_MONDAY
 
 const replaceVariables = ({ variableMapping, columnValues, item }) => {
-  const variables = Object.entries(variableMapping).reduce(
-    (acc, [key, columnId]) => {
-      // Verificamos si la variable es 'name' (o alguna otra fuera de column_values)
-      if (key === 'name') {
-        acc[key].id = item.name || `{${key}}` // Usamos el nombre del item si es 'name'
+  const variables = variableMapping.reduce(
+    (acc, { variableName, columnId }) => {
+      if (variableName === 'name') {
+        acc[variableName] = item.name || `{${variableName}}` // Usamos el nombre del item si es 'name'
       } else {
         const columnValue = columnValues[columnId]
 
-        // console.log(columnValue)
-
-        // Comprobamos el tipo de la columna para extraer el valor correcto
         if (columnValue) {
           if (columnValue.files && columnValue.files.length > 0) {
-            // Si la columna es de tipo 'file', extraemos el nombre del archivo
-            acc[key].id = columnValue.files[0].name
+            acc[variableName] = columnValue.files
+              .map((file) => file.name)
+              .join(', ') // Si es archivo
           } else if (columnValue.text) {
-            // Si la columna tiene 'text', usamos el texto directamente
-            acc[key].id = columnValue.text
+            acc[variableName] = columnValue.text // Si es texto
           } else if (columnValue.date) {
-            // Si la columna tiene 'date', usamos la fecha en formato 'aaaa-mm-dd'
-            acc[key].id = columnValue.date
+            acc[variableName] = columnValue.date // Si es fecha
           } else {
-            // Si la columna es de otro tipo, usamos su valor como está
-            acc[key].id = columnValue || `{${key}}`
+            acc[variableName] = columnValue || `{${variableName}}`
           }
         } else {
-          // Si no encontramos la columna o su valor, dejamos la variable intacta
-          acc[key] = `{${key}}`
+          acc[variableName] = `{${variableName}}`
         }
       }
       return acc
@@ -41,7 +34,7 @@ const replaceVariables = ({ variableMapping, columnValues, item }) => {
     {}
   )
 
-  return variables
+  return variables // Retornar variables con los valores
 }
 
 export async function getEmails({ pulseId, emailsMapping }) {
@@ -208,18 +201,24 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
   }
 }
 
-export async function getAssets({ pulseId }) {
+export async function getAssets({ pulseId, attachmentsColumnId }) {
   try {
     const query = `
-         {
-            items (ids: ${pulseId}) {
-                assets {
-                  public_url
-                  name
-                }
-            }
+      {
+        items(ids: ${pulseId}) {
+          column_values(ids: "${attachmentsColumnId}") {
+            id
+            value
+          }
+          assets {
+            id
+            public_url
+            name
+          }
         }
+      }
     `
+    // console.log(query)
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
@@ -230,9 +229,26 @@ export async function getAssets({ pulseId }) {
     })
 
     const res = await response.json()
-    const assets = res.data?.items?.[0].assets || []
+    const item = res.data?.items?.[0]
+    const assets = item?.assets || []
 
-    return assets // Retorna todos los archivos encontrados
+    // Parsear los assetId del campo value (columna de archivos)
+    const attachmentsColumnValue = item?.column_values?.[0]?.value
+    const parsedValue = attachmentsColumnValue
+      ? JSON.parse(attachmentsColumnValue)
+      : { files: [] }
+    const attachmentAssetIds = parsedValue.files.map((file) => file.assetId) // Obtener los IDs de los archivos
+
+    // Filtrar los assets por los IDs obtenidos de la columna
+    const filteredAssets = assets.filter((asset) =>
+      attachmentAssetIds.map(String).includes(asset.id.toString())
+    )
+
+    // console.log('Assets:', assets)
+    // console.log('Attachment IDs:', attachmentAssetIds)
+    // console.log('Filtered Assets:', filteredAssets)
+
+    return filteredAssets // Retorna solo los archivos de la columna mapeada
   } catch (error) {
     console.error('Error al obtener los adjuntos del correo:', error)
     throw error

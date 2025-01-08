@@ -13,9 +13,13 @@ import {
   getBodyEmail,
   getColumnsList,
 } from '../src/getData.js'
-import columnMapping from '../src/config/columnMapping.js'
-import { readTokens } from '../src/tokenUtils.js'
-import { getVariables, updateVariables } from '../src/utils/mappingVariables.js'
+// import columnMapping from '../src/config/columnMapping.js'
+// import { getVariables, updateVariables } from '../src/utils/mappingVariables.js'
+import { readTokens } from '../src/utils/tokenUtils.js'
+import {
+  saveColumnMapping,
+  getColumnMapping,
+} from '../src/utils/mappingUtils.js'
 
 // import validateToken from '../src/middlewares/validateToken.js'
 
@@ -91,8 +95,8 @@ app.post('/exchange-code', async (req, res) => {
 app.get('/column-mapping/:boardId', async (req, res) => {
   try {
     const { boardId } = req.params
-    const variables = await getVariables({ boardId })
-    res.status(200).json(variables)
+    const mapping = await getColumnMapping({ boardId })
+    res.status(200).json(mapping)
   } catch (error) {
     console.error('Error al obtener el mapeo de columnas:', error)
     res
@@ -105,7 +109,7 @@ app.put('/column-mapping/:boardId', async (req, res) => {
   try {
     const { boardId } = req.params
     const mappingData = req.body.mapping
-    const result = await updateVariables({ boardId, mappingData })
+    const result = await saveColumnMapping({ boardId, mappingData })
     res.status(200).json(result)
   } catch (error) {
     console.error('Error actualizando el mappingColumn:', error)
@@ -136,32 +140,34 @@ app.post('/webhook', async (req, res) => {
     console.log(JSON.stringify(req.body, 0, 2))
     res.status(200).send(req.body)
   } else {
-    //info
-    const { pulseId } = req.body.event
-
     try {
+      const { boardId, pulseId } = req.body.event
+      const mapping = await getColumnMapping({ boardId })
       // Obtener los correos
       const { toEmails, ccEmails, bccEmails } = await getEmails({
         pulseId,
-        emailsMapping: columnMapping.emails,
+        emailsMapping: mapping.emails,
       })
 
       // Obtener el asunto
       const { subject: subjectEmail } = await getSubject({
         pulseId,
-        subjectColumnId: columnMapping.subject,
-        variableMapping: columnMapping.variables,
+        subjectColumnId: mapping.subject,
+        variableMapping: mapping.variables,
       })
 
       // Obtener el cuerpo del correo con parámetros
       const { newBody: bodyEmail } = await getBodyEmail({
         pulseId,
-        bodyColumnId: columnMapping.bodyTemplate,
-        variableMapping: columnMapping.variables,
+        bodyColumnId: mapping.bodyTemplate,
+        variableMapping: mapping.variables,
       })
 
       // Obtener los archivos adjuntos
-      const assets = await getAssets({ pulseId })
+      const assets = await getAssets({
+        pulseId,
+        attachmentsColumnId: mapping.attachments,
+      })
 
       // Preparar datos del correo
       const emailData = {
@@ -214,18 +220,18 @@ app.get('/', (req, res) => {
 // })
 
 // Configurar el puerto y los certificados SSL, luego iniciar el servidor
-// const sslOptions = {
-//   key: fs.readFileSync('./src/ssl/sefsigned.key'),
-//   cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
-// }
+const sslOptions = {
+  key: fs.readFileSync('./src/ssl/sefsigned.key'),
+  cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
+}
 
-// https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {
-//   console.log(`Server is running on port ${PORT_HTTPS}`)
-// })
+https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {
+  console.log(`Server is running on port ${PORT_HTTPS}`)
+})
 
-// app.listen(PORT_HTTP, '0.0.0.0', () => {
-//   console.log(`Server is running on port ${PORT_HTTP}`)
-// })
+app.listen(PORT_HTTP, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT_HTTP}`)
+})
 
 //Verificar las variables de entorno
 // console.log('CLIENT_ID:', process.env.CLIENT_ID);

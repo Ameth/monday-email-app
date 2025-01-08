@@ -1,21 +1,5 @@
 import db from '../firebaseConfig.js'
 
-import fs from 'fs'
-import { fileURLToPath } from 'url'
-import path from 'path'
-import dotenv from 'dotenv'
-
-// Definir __dirname para ES6
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-// Función para construir la ruta del archivo de tokens
-const getTokenFilePath = () => {
-  //   const normalizedEmail = userEmail.toLowerCase().trim()
-  //   return path.resolve(__dirname, './tokens', `${normalizedEmail}.json`)
-  return path.resolve(__dirname, './tokens', `user.json`)
-}
-
 // Leer tokens desde el documento "default"
 export const readTokens = async () => {
   try {
