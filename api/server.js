@@ -3,6 +3,10 @@ import https from 'https'
 import bodyParser from 'body-parser'
 import fs from 'fs'
 import cors from 'cors'
+import dotenv from 'dotenv'
+
+// Carga las variables del archivo .env
+dotenv.config()
 
 import descargarArchivo from '../src/descargarArchivo.js'
 import { exchangeCodeForTokens, sendEmailWithGraph } from '../src/mailer.js'
@@ -202,6 +206,10 @@ app.post('/webhook', async (req, res) => {
       res.status(500).json({ error: 'Error procesando el webhook' })
     }
   }
+})
+
+app.get('/env-var', (req, res) => {
+  res.status(200).json({ redirect_url: process.env.REDIRECT_URI })
 })
 
 app.get('/', (req, res) => {
