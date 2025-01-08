@@ -176,20 +176,20 @@ app.post('/webhook', async (req, res) => {
         hidenCopy_to: bccEmails,
         subject: subjectEmail,
         body: bodyEmail,
-        attachment: [],
-        attachmentPath: [],
+        attachments: [], // Almacena los buffers para enviar
       }
 
-      //Generar los archivos adjuntos
+      // Generar los archivos adjuntos en memoria
       for (let asset of assets) {
         const { public_url: publicUrl, name: fileName } = asset
-        const rutaArchivo = fileName
-          ? await descargarArchivo(publicUrl, fileName)
-          : null
+        const buffer = await descargarArchivo(publicUrl) // Descargar el archivo en memoria
 
-        if (rutaArchivo) {
-          emailData.attachment.push(fileName) // Agregar nombre del archivo
-          emailData.attachmentPath.push(rutaArchivo) // Agregar ruta local del archivo
+        if (buffer) {
+          emailData.attachments.push({
+            '@odata.type': '#microsoft.graph.fileAttachment',
+            name: fileName, // Nombre del archivo
+            contentBytes: buffer.toString('base64'), // Convertir buffer a Base64
+          })
         }
       }
 

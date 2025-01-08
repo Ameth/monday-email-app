@@ -144,7 +144,7 @@ const getNewAccessToken = async ({ refresh_token, email }) => {
 }
 
 // Función para enviar el correo
-export const sendEmailWithGraph = async ({ emailData}) => {
+export const sendEmailWithGraph = async ({ emailData }) => {
   try {
     // Cargar los tokens del usuario
     let { access_token, refresh_token, email } = await readTokens()
@@ -155,15 +155,8 @@ export const sendEmailWithGraph = async ({ emailData}) => {
 
     console.log(`Enviando correo desde la cuenta: ${email}`)
 
-    const {
-      send_to,
-      copy_to,
-      hidenCopy_to,
-      subject,
-      body,
-      attachment,
-      attachmentPath,
-    } = emailData
+    const { send_to, copy_to, hidenCopy_to, subject, body, attachments } =
+      emailData
 
     // Aquí recuperas el último Refresh Token y Access Token almacenados
     // let accessToken = process.env.ACCESS_TOKEN
@@ -180,7 +173,7 @@ export const sendEmailWithGraph = async ({ emailData}) => {
       console.log('Access Token expirado. Renovando...')
       // accessToken = await getNewAccessToken(refreshToken)
       const newAccessToken = await getNewAccessToken({
-        refresh_token
+        refresh_token,
       })
 
       access_token = newAccessToken
@@ -194,13 +187,6 @@ export const sendEmailWithGraph = async ({ emailData}) => {
       }))
     }
 
-    // Prepare attachments if provided
-    const attachments = attachmentPath.map((path, index) => ({
-      '@odata.type': '#microsoft.graph.fileAttachment',
-      name: attachment[index], // Nombre del archivo
-      contentBytes: Buffer.from(fs.readFileSync(path)).toString('base64'), // Convertir el archivo a Base64
-    }))
-
     // Build the emailSendData JSON
     const emailSendData = {
       message: {
@@ -212,7 +198,7 @@ export const sendEmailWithGraph = async ({ emailData}) => {
         toRecipients: formatRecipients(send_to),
         ccRecipients: formatRecipients(copy_to),
         bccRecipients: formatRecipients(hidenCopy_to),
-        attachments, // Add attachments if they exist
+        attachments, // Enviar directamente los adjuntos en memoria
       },
     }
 
