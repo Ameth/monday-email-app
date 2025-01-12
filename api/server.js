@@ -5,7 +5,7 @@ import fs from 'fs'
 import cors from 'cors'
 import dotenv from 'dotenv'
 
-// Carga las variables del archivo .env
+// Load variables from .env file
 dotenv.config()
 
 import descargarArchivo from '../src/descargarArchivo.js'
@@ -32,13 +32,13 @@ const app = express()
 const PORT_HTTPS = 443
 const PORT_HTTP = 80
 
-// Habilitar CORS
-// app.use(cors()); // Permite solicitudes desde cualquier origen (para desarrollo)
+// Enable CORS
+// app.use(cors()); // Allow requests from any origin (for development)
 app.use(
   cors({
-    origin: '*', // Permitir solicitudes desde cualquier origen (puedes limitar a dominios específicos)
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Métodos permitidos
-    allowedHeaders: ['Content-Type', 'Authorization'], // Cabeceras permitidas
+    origin: '*', // Allow requests from any origin (you can limit to specific domains)
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Allowed methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Allowed headers
   })
 )
 
@@ -65,8 +65,8 @@ app.get('/user-info', async (req, res) => {
       email,
     })
   } catch (error) {
-    // console.error('Error al leer la información del usuario.')
-    res.status(500).json({ error: 'Error al leer la información del usuario.' })
+    // console.error('Error reading user information.')
+    res.status(500).json({ error: 'Error reading user information.' })
   }
 })
 
@@ -77,7 +77,7 @@ app.post('/exchange-code', async (req, res) => {
     if (!code) {
       return res
         .status(400)
-        .json({ error: 'El código de autorización es requerido' })
+        .json({ error: 'Authorization code is required' })
     }
 
     const { access_token, refresh_token, expires_in, email } =
@@ -85,13 +85,13 @@ app.post('/exchange-code', async (req, res) => {
         code,
       })
 
-    // console.log('Tokens obtenidos:', { access_token, refresh_token, expires_in })
+    // console.log('Tokens obtained:', { access_token, refresh_token, expires_in })
     res.status(200).json({ access_token, refresh_token, expires_in, email })
   } catch (error) {
-    // console.error('Error en /exchange-code:', error.message || error);
+    // console.error('Error in /exchange-code:', error.message || error);
 
     res.status(500).json({
-      error: error.message || 'Ocurrió un error al procesar la solicitud.',
+      error: error.message || 'An error occurred while processing the request.',
     })
   }
 })
@@ -102,10 +102,10 @@ app.get('/column-mapping/:boardId', async (req, res) => {
     const mapping = await getColumnMapping({ boardId })
     res.status(200).json(mapping)
   } catch (error) {
-    console.error('Error al obtener el mapeo de columnas:', error)
+    console.error('Error getting column mapping:', error)
     res
       .status(500)
-      .json({ error: 'Error al obtener las variables', message: error.message })
+      .json({ error: 'Error getting column mapping', message: error.message })
   }
 })
 
@@ -116,9 +116,9 @@ app.put('/column-mapping/:boardId', async (req, res) => {
     const result = await saveColumnMapping({ boardId, mappingData })
     res.status(200).json(result)
   } catch (error) {
-    console.error('Error actualizando el mappingColumn:', error)
+    console.error('Error updating column mapping:', error)
     res.status(500).json({
-      error: 'Error actualizando el el mapeo de columnas',
+      error: 'Error updating column mapping',
       message: error.message,
     })
   }
@@ -130,16 +130,16 @@ app.get('/column-list/:boardId', async (req, res) => {
     const columns = await getColumnsList({ boardId })
     res.status(200).json(columns)
   } catch (error) {
-    console.error('Error al obtener el listado de las columnas:', error)
+    console.error('Error getting column list:', error)
     res.status(500).json({
-      error: 'Error al obtener el listado de las columnas',
+      error: 'Error getting column list',
       message: error.message,
     })
   }
 })
 
 app.post('/webhook', async (req, res) => {
-  //Devolver el cuerpo de la solicitud para configurar el webhook
+  // Return the request body to set up the webhook
   if (req.body.challenge) {
     console.log(JSON.stringify(req.body, 0, 2))
     res.status(200).send(req.body)
@@ -147,63 +147,63 @@ app.post('/webhook', async (req, res) => {
     try {
       const { boardId, pulseId } = req.body.event
       const mapping = await getColumnMapping({ boardId })
-      // Obtener los correos
+      // Get emails
       const { toEmails, ccEmails, bccEmails } = await getEmails({
         pulseId,
         emailsMapping: mapping.emails,
       })
 
-      // Obtener el asunto
+      // Get the subject
       const { subject: subjectEmail } = await getSubject({
         pulseId,
         subjectColumnId: mapping.subject,
         variableMapping: mapping.variables,
       })
 
-      // Obtener el cuerpo del correo con parámetros
+      // Get the email body with parameters
       const { newBody: bodyEmail } = await getBodyEmail({
         pulseId,
         bodyColumnId: mapping.bodyTemplate,
         variableMapping: mapping.variables,
       })
 
-      // Obtener los archivos adjuntos
+      // Get attachments
       const assets = await getAssets({
         pulseId,
         attachmentsColumnId: mapping.attachments,
       })
 
-      // Preparar datos del correo
+      // Prepare email data
       const emailData = {
         send_to: toEmails,
         copy_to: ccEmails,
         hidenCopy_to: bccEmails,
         subject: subjectEmail,
         body: bodyEmail,
-        attachments: [], // Almacena los buffers para enviar
+        attachments: [], // Store buffers to send
       }
 
-      // Generar los archivos adjuntos en memoria
+      // Generate attachments in memory
       for (let asset of assets) {
         const { public_url: publicUrl, name: fileName } = asset
-        const buffer = await descargarArchivo(publicUrl) // Descargar el archivo en memoria
+        const buffer = await descargarArchivo(publicUrl) // Download the file in memory
 
         if (buffer) {
           emailData.attachments.push({
             '@odata.type': '#microsoft.graph.fileAttachment',
-            name: fileName, // Nombre del archivo
-            contentBytes: buffer.toString('base64'), // Convertir buffer a Base64
+            name: fileName, // File name
+            contentBytes: buffer.toString('base64'), // Convert buffer to Base64
           })
         }
       }
 
-      // Enviar la respuesta
+      // Send the response
       const statusMail = await sendEmailWithGraph({ emailData })
       // res.status(200).json(emailData)
       res.status(200).json({ statusMail })
     } catch (error) {
-      console.error('Error procesando el webhook:', error)
-      res.status(500).json({ error: 'Error procesando el webhook' })
+      console.error('Error processing webhook:', error)
+      res.status(500).json({ error: 'Error processing webhook' })
     }
   }
 })
@@ -227,7 +227,7 @@ app.get('/', (req, res) => {
 //   res.status(200).send(req.body)
 // })
 
-// Configurar el puerto y los certificados SSL, luego iniciar el servidor
+// Set up the port and SSL certificates, then start the server
 // const sslOptions = {
 //   key: fs.readFileSync('./src/ssl/sefsigned.key'),
 //   cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
@@ -241,9 +241,9 @@ app.get('/', (req, res) => {
 //   console.log(`Server is running on port ${PORT_HTTP}`)
 // })
 
-//Verificar las variables de entorno
+// Check environment variables
 // console.log('CLIENT_ID:', process.env.CLIENT_ID);
 // console.log('REDIRECT_URI:', process.env.REDIRECT_URI);
 
-// Exportar como función serverless
+// Export as serverless function
 export default app
