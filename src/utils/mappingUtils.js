@@ -1,9 +1,12 @@
-import db from '../firebaseConfig.js'
+import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import dynamoDB from '../databaseConfig.js'
 
 // Guardar datos al Firestore
 export const saveColumnMapping = async ({ boardId, mappingData }) => {
-  try {
-    const formattedData = {
+  const params = {
+    TableName: 'columnMapping',
+    Item: {
+      boardId: `boardId-${boardId}`,
       emails: {
         to: mappingData.emails?.to || '',
         cc: mappingData.emails?.cc || '',
@@ -13,14 +16,12 @@ export const saveColumnMapping = async ({ boardId, mappingData }) => {
       bodyTemplate: mappingData.bodyTemplate || '',
       attachments: mappingData.attachments || '',
       variables: mappingData.variables || [], // Ahora es un array
-    }
+    },
+  }
 
-    await db
-      .collection('columnMappings')
-      .doc(`boardId-${boardId}`)
-      .set(formattedData)
-    // console.log('Mapping guardado correctamente.')
-    return { message: 'Mapping saved successfully' }
+  try {
+    await dynamoDB.send(new PutCommand(params))
+    console.log('Mapping guardado correctamente en DynamoDB.')
   } catch (error) {
     console.error('Error al guardar el mapping:', error)
     throw new Error('Error al guardar el mapping.')
@@ -29,45 +30,24 @@ export const saveColumnMapping = async ({ boardId, mappingData }) => {
 
 // Leer un mapping desde Firestore
 export const getColumnMapping = async ({ boardId }) => {
-  try {
-    const doc = await db
-      .collection('columnMappings')
-      .doc(`boardId-${boardId}`)
-      .get()
+  const params = {
+    TableName: 'columnMapping',
+    Key: { boardId: `boardId-${boardId}` },
+  }
 
-    if (!doc.exists) {
-      // Si el documento no existe, crea uno vacío
-      const defaultMapping = {
+  try {
+    const result = await dynamoDB.send(new GetCommand(params))
+    if (!result.Item) {
+      return {
+        boardId,
         emails: { to: '', cc: '', bcc: '' },
         subject: '',
         bodyTemplate: '',
         attachments: '',
-        variables: [], // Ahora es un array vacío
-      }
-      await db
-        .collection('columnMappings')
-        .doc(`boardId-${boardId}`)
-        .set(defaultMapping)
-      return {
-        boardId,
-        emails: defaultMapping.emails,
-        subject: defaultMapping.subject,
-        bodyTemplate: defaultMapping.bodyTemplate,
-        attachments: defaultMapping.attachments,
-        variables: defaultMapping.variables,
+        variables: [],
       }
     }
-
-    const data = doc.data()
-
-    return {
-      boardId,
-      emails: data.emails,
-      subject: data.subject,
-      bodyTemplate: data.bodyTemplate,
-      attachments: data.attachments,
-      variables: data.variables || [], // Retornar como array
-    }
+    return result.Item
   } catch (error) {
     console.error('Error al leer el mapping:', error)
     throw new Error('Error al leer el mapping.')

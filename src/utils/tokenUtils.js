@@ -1,28 +1,40 @@
-import db from '../firebaseConfig.js'
+import { GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import dynamoDB from '../databaseConfig.js'
 
 // Leer tokens desde el documento "default"
 export const readTokens = async () => {
+  const params = {
+    TableName: 'tokens',
+    Key: { documentId: 'default' },
+  }
+
   try {
-    const doc = await db.collection('tokens').doc('default').get() // Lee siempre el documento 'default'
-    if (!doc.exists) {
+    const result = await dynamoDB.send(new GetCommand(params))
+    if (!result.Item) {
       throw new Error('No se encontraron tokens almacenados.')
     }
-    return doc.data()
+    return result.Item
   } catch (error) {
-    console.error(`Error al leer los tokens:`, error)
+    console.error('Error al leer los tokens:', error)
     throw new Error('Error al leer los tokens.')
   }
 }
 
 // Guardar tokens de un usuario
 export const saveTokens = async (tokens) => {
-  try {
-    // console.log('Intentando guardar tokens:', tokens);
+  const params = {
+    TableName: 'tokens',
+    Item: {
+      documentId: 'default',
+      ...tokens,
+    },
+  }
 
-    await db.collection('tokens').doc('default').set(tokens) // Guarda siempre bajo el ID 'default'
-    console.log('Tokens guardados correctamente en Firestore.')
+  try {
+    await dynamoDB.send(new PutCommand(params))
+    console.log('Tokens guardados correctamente en DynamoDB.')
   } catch (error) {
-    console.error(`Error al guardar los tokens:`, error)
+    console.error('Error al guardar los tokens:', error)
     throw new Error('Error al guardar los tokens.')
   }
 }

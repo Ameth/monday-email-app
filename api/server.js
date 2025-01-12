@@ -228,18 +228,18 @@ app.get('/', (req, res) => {
 // })
 
 // Set up the port and SSL certificates, then start the server
-// const sslOptions = {
-//   key: fs.readFileSync('./src/ssl/sefsigned.key'),
-//   cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
-// }
+const sslOptions = {
+  key: fs.readFileSync('./src/ssl/sefsigned.key'),
+  cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
+}
 
-// https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {
-//   console.log(`Server is running on port ${PORT_HTTPS}`)
-// })
+https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {
+  console.log(`Server is running on port ${PORT_HTTPS}`)
+})
 
-// app.listen(PORT_HTTP, '0.0.0.0', () => {
-//   console.log(`Server is running on port ${PORT_HTTP}`)
-// })
+app.listen(PORT_HTTP, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT_HTTP}`)
+})
 
 // Check environment variables
 // console.log('CLIENT_ID:', process.env.CLIENT_ID);
