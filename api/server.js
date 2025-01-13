@@ -31,6 +31,7 @@ const app = express()
 
 const PORT_HTTPS = 443
 const PORT_HTTP = 80
+const PORT_PROD = 3000
 
 // Enable CORS
 // app.use(cors()); // Allow requests from any origin (for development)
@@ -228,18 +229,22 @@ app.get('/', (req, res) => {
 // })
 
 // Set up the port and SSL certificates, then start the server
-const sslOptions = {
-  key: fs.readFileSync('./src/ssl/sefsigned.key'),
-  cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
-}
+// const sslOptions = {
+//   key: fs.readFileSync('./src/ssl/selfsigned.key'),
+//   cert: fs.readFileSync('./src/ssl/selfsigned.crt'),
+// }
 
-https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {
-  console.log(`Server is running on port ${PORT_HTTPS}`)
-})
+// https.createServer(sslOptions, app).listen(PORT_HTTPS, () => {
+//   console.log(`Server is running on port ${PORT_HTTPS}`)
+// })
 
-app.listen(PORT_HTTP, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT_HTTP}`)
-})
+// app.listen(PORT_HTTP, '0.0.0.0', () => {
+//   console.log(`Server is running on port ${PORT_HTTP}`)
+// })
+
+app.listen(PORT_PROD, '0.0.0.0', () => {
+  console.log(`Server is running on port ${PORT_PROD}`);
+});
 
 // Check environment variables
 // console.log('CLIENT_ID:', process.env.CLIENT_ID);

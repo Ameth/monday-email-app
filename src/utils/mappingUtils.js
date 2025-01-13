@@ -21,10 +21,10 @@ export const saveColumnMapping = async ({ boardId, mappingData }) => {
 
   try {
     await dynamoDB.send(new PutCommand(params))
-    console.log('Mapping guardado correctamente en DynamoDB.')
+    console.log('Mapping saved successfully in DynamoDB.')
   } catch (error) {
-    console.error('Error al guardar el mapping:', error)
-    throw new Error('Error al guardar el mapping.')
+    console.error('Error saving the mapping:', error)
+    throw new Error('Error saving the mapping.')
   }
 }
 
@@ -48,8 +48,8 @@ export const getColumnMapping = async ({ boardId }) => {
       }
     }
     return result.Item
-  } catch (error) {
-    console.error('Error al leer el mapping:', error)
-    throw new Error('Error al leer el mapping.')
+    } catch (error) {
+    console.error('Error reading the mapping:', error)
+    throw new Error('Error reading the mapping.')
+    }
   }
-}
