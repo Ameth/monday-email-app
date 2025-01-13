@@ -14,9 +14,9 @@ export const readTokens = async () => {
       throw new Error('No stored tokens found.')
     }
     return result.Item
-    } catch (error) {
+  } catch (error) {
     console.error('Error reading tokens:', error)
-    throw new Error('Error reading tokens.')
+    throw new Error(`Error reading tokens: ${error}`)
   }
 }
 
@@ -33,8 +33,8 @@ export const saveTokens = async (tokens) => {
   try {
     await dynamoDB.send(new PutCommand(params))
     console.log('Tokens successfully saved in DynamoDB.')
-    } catch (error) {
+  } catch (error) {
     console.error('Error saving tokens:', error)
-    throw new Error('Error saving tokens.')
-    }
+    throw new Error(`Error saving tokens: ${error}`)
   }
+}
