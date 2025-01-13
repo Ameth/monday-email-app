@@ -67,7 +67,7 @@ app.get('/user-info', async (req, res) => {
     })
   } catch (error) {
     // console.error('Error reading user information.')
-    res.status(500).json({ error: 'Error reading user information.' })
+    res.status(500).json({ error: `Error reading user information: ${error}` })
   }
 })
 
@@ -76,9 +76,7 @@ app.post('/exchange-code', async (req, res) => {
     const { code } = req.body
 
     if (!code) {
-      return res
-        .status(400)
-        .json({ error: 'Authorization code is required' })
+      return res.status(400).json({ error: 'Authorization code is required' })
     }
 
     const { access_token, refresh_token, expires_in, email } =
@@ -243,8 +241,8 @@ app.get('/', (req, res) => {
 // })
 
 app.listen(PORT_PROD, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT_PROD}`);
-});
+  console.log(`Server is running on port ${PORT_PROD}`)
+})
 
 // Check environment variables
 // console.log('CLIENT_ID:', process.env.CLIENT_ID);
