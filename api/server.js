@@ -31,7 +31,7 @@ const app = express()
 
 const PORT_HTTPS = 443
 const PORT_HTTP = 80
-const PORT_PROD = 3000
+const PORT_PROD = 3001
 
 // Enable CORS
 // app.use(cors()); // Allow requests from any origin (for development)
