@@ -141,7 +141,7 @@ app.post('/webhook', async (req, res) => {
   // Return the request body to set up the webhook
   if (req.body.challenge) {
     console.log(JSON.stringify(req.body, 0, 2))
-    res.status(200).send(req.body)
+    res.status(200).json({ challenge: req.body.challenge }) // Responder exactamente el challenge
   } else {
     try {
       const { boardId, pulseId } = req.body.event
