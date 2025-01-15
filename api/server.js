@@ -208,7 +208,15 @@ app.post('/webhook', async (req, res) => {
 })
 
 app.get('/env-var', (req, res) => {
-  res.status(200).json({ redirect_url: process.env.REDIRECT_URI })
+  res.status(200).json({
+    token_monday: process.env.TOKEN_MONDAY,
+    client_id: process.env.CLIENT_ID,
+    client_secret: process.env.CLIENT_SECRET,
+    redirect_url: process.env.REDIRECT_URI,
+    aws_region: process.env.AWS_REGION,
+    aws_access_key_id: process.env.AWS_ACCESS_KEY_ID,
+    aws_secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,
+  })
 })
 
 app.get('/', (req, res) => {
