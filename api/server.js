@@ -198,8 +198,8 @@ app.post('/webhook', async (req, res) => {
 
       // Send the response
       const statusMail = await sendEmailWithGraph({ emailData })
-      // res.status(200).json(emailData)
       res.status(200).json({ statusMail })
+      // res.status(200).json(emailData)
     } catch (error) {
       console.error('Error processing webhook:', error)
       res.status(500).json({ error: 'Error processing webhook' })
