@@ -8,7 +8,7 @@ const TOKEN = process.env.TOKEN_MONDAY
 const replaceVariables = ({ variableMapping, columnValues, item }) => {
   const variables = variableMapping.reduce(
     (acc, { variableName, columnId }) => {
-      if (variableName === 'name') {
+      if (columnId === 'name') {
         acc[variableName] = item.name || `{${variableName}}` // Usamos el nombre del item si es 'name'
       } else {
         const columnValue = columnValues[columnId]
