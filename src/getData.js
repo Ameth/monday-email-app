@@ -37,6 +37,16 @@ const replaceVariables = ({ variableMapping, columnValues, item }) => {
   return variables // Retornar variables con los valores
 }
 
+const unescapeHTML = (text) => {
+  if (!text) return ''
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
 export async function getEmails({ pulseId, emailsMapping }) {
   try {
     const emailColumns = Object.values(emailsMapping)
@@ -178,6 +188,7 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
     }, {})
 
     const rawBodyText = columnValues[bodyColumnId]?.text || ''
+    const unescapedBodyText = unescapeHTML(rawBodyText)
 
     // console.log(columnValues)
     // console.log('****************************')
@@ -189,7 +200,7 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
     // console.log(variables)
 
     // Realizamos el reemplazo de las variables en el texto del cuerpo
-    const newBody = rawBodyText.replace(
+    const newBody = unescapedBodyText.replace(
       /\{(.*?)\}/g,
       (_, variable) => variables[variable] || `{${variable}}`
     )
