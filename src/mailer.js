@@ -35,7 +35,7 @@ const getInfoUserAuth = async ({ access_token }) => {
   }
 }
 
-export const exchangeCodeForTokens = async ({ code }) => {
+export const exchangeCodeForTokens = async ({ code, boardId }) => {
   const data = new URLSearchParams({
     client_id: process.env.CLIENT_ID,
     client_secret: process.env.CLIENT_SECRET,
@@ -74,7 +74,7 @@ export const exchangeCodeForTokens = async ({ code }) => {
     }
 
     // Almacenar los tokens asociados al email del usuario
-    await saveTokens(userTokens)
+    await saveTokens({ tokens: userTokens, boardId: boardId })
 
     // Enviar tokens al frontend o almacenarlos
     return { access_token, refresh_token, expires_in, email: userData.email }
@@ -95,7 +95,7 @@ export const exchangeCodeForTokens = async ({ code }) => {
 }
 
 // Función para obtener un nuevo Access Token
-const getNewAccessToken = async ({ refresh_token, email }) => {
+const getNewAccessToken = async ({ refresh_token, boardId }) => {
   try {
     const data = new URLSearchParams({
       client_id: process.env.CLIENT_ID,
@@ -128,10 +128,10 @@ const getNewAccessToken = async ({ refresh_token, email }) => {
     )
 
     // Actualiza el archivo con el nuevo accessToken y refreshToken
-    const currentTokens = await readTokens()
+    const currentTokens = await readTokens({ boardId })
     currentTokens.access_token = access_token
     currentTokens.refresh_token = newRefreshToken
-    await saveTokens(currentTokens)
+    await saveTokens({ tokens: currentTokens, boardId: boardId })
 
     return access_token
   } catch (error) {
@@ -144,16 +144,16 @@ const getNewAccessToken = async ({ refresh_token, email }) => {
 }
 
 // Función para enviar el correo
-export const sendEmailWithGraph = async ({ emailData }) => {
+export const sendEmailWithGraph = async ({ emailData, boardId }) => {
   try {
     // Cargar los tokens del usuario
-    let { access_token, refresh_token, email } = await readTokens()
+    let { access_token, refresh_token, email } = await readTokens({ boardId })
 
     if (!email) {
-      throw new Error('El correo del usuario no está almacenado.')
+      throw new Error('User email is not stored.')
     }
 
-    console.log(`Enviando correo desde la cuenta: ${email}`)
+    console.log(`Sending mail from the account: ${email}`)
 
     const { send_to, copy_to, hidenCopy_to, subject, body, attachments } =
       emailData
@@ -170,10 +170,11 @@ export const sendEmailWithGraph = async ({ emailData }) => {
       })
       // throw new Error('Forzando error para renovar el token')
     } catch {
-      console.log('Access Token expirado. Renovando...')
+      console.log('Access Token expired. Renewing...')
       // accessToken = await getNewAccessToken(refreshToken)
       const newAccessToken = await getNewAccessToken({
         refresh_token,
+        boardId,
       })
 
       access_token = newAccessToken
@@ -187,13 +188,20 @@ export const sendEmailWithGraph = async ({ emailData }) => {
       }))
     }
 
+    // Helper para convertir texto plano a HTML
+    const formatBodyToHTML = (text) => {
+      if (!text) return ''
+      // Convierte saltos de línea a <br>
+      return text.replace(/\n/g, '<br>')
+    }
+
     // Build the emailSendData JSON
     const emailSendData = {
       message: {
-        subject: subject || 'Sin Asunto',
+        subject: subject || 'No Subject',
         body: {
           contentType: 'HTML', // Puedes cambiar a "HTML" si el cuerpo del mensaje tiene formato HTML
-          content: body || 'Sin contenido',
+          content: formatBodyToHTML(body) || 'No content', // Convierte el cuerpo a HTML
         },
         toRecipients: formatRecipients(send_to),
         ccRecipients: formatRecipients(copy_to),
@@ -216,12 +224,12 @@ export const sendEmailWithGraph = async ({ emailData }) => {
       }
     )
 
-    console.log('Correo enviado correctamente:', response.status)
+    console.log('Email sent successfully:', response.status)
 
     return { emailSendData, responseStatus: response.status }
   } catch (error) {
     console.error(
-      'Error al enviar correo con Graph:',
+      'Error sending mail with Graph:',
       error.response?.data || error.message
     )
     return error.response?.data || error.message
