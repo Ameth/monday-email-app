@@ -19,7 +19,11 @@ import {
 } from '../src/getData.js'
 // import columnMapping from '../src/config/columnMapping.js'
 // import { getVariables, updateVariables } from '../src/utils/mappingVariables.js'
-import { readTokens } from '../src/utils/tokenUtils.js'
+import {
+  readTokens,
+  deleteTokens,
+  getAllTokens,
+} from '../src/utils/tokenUtils.js'
 import {
   saveColumnMapping,
   getColumnMapping,
@@ -56,7 +60,24 @@ app.use(bodyParser.json())
 
 app.get('/user-info', async (req, res) => {
   try {
-    const tokens = await readTokens()
+    const tokens = await getAllTokens()
+    if (tokens.length === 0) {
+      return res.status(404).json({ error: 'No tokens found in the database.' })
+    }
+    res.status(200).json(tokens)
+  } catch (error) {
+    console.error('Error retrieving all tokens:', error)
+    res.status(500).json({ error: `Error retrieving all tokens: ${error}` })
+  }
+})
+
+app.get('/user-info/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params
+    const tokens = await readTokens({ boardId })
+    if (!tokens) {
+      return res.status(404).json({ error: 'No tokens found for the user.' })
+    }
     const { display_name, surname, given_name, email } = tokens
 
     res.status(200).json({
@@ -71,9 +92,21 @@ app.get('/user-info', async (req, res) => {
   }
 })
 
+app.post('/user-logout/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params
+    // Llama a la función para borrar los tokens
+    await deleteTokens({ boardId })
+    res.status(200).json({ message: 'User logged out successfully' })
+  } catch (error) {
+    console.error('Error in /user-logout:', error.message)
+    res.status(500).json({ error: 'Failed to log out user' })
+  }
+})
+
 app.post('/exchange-code', async (req, res) => {
   try {
-    const { code } = req.body
+    const { code, boardId } = req.body
 
     if (!code) {
       return res.status(400).json({ error: 'Authorization code is required' })
@@ -82,6 +115,7 @@ app.post('/exchange-code', async (req, res) => {
     const { access_token, refresh_token, expires_in, email } =
       await exchangeCodeForTokens({
         code,
+        boardId,
       })
 
     // console.log('Tokens obtained:', { access_token, refresh_token, expires_in })
@@ -197,7 +231,7 @@ app.post('/webhook', async (req, res) => {
       }
 
       // Send the response
-      const statusMail = await sendEmailWithGraph({ emailData })
+      const statusMail = await sendEmailWithGraph({ emailData, boardId })
       res.status(200).json({ statusMail })
       // res.status(200).json(emailData)
     } catch (error) {
