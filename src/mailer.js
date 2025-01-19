@@ -188,20 +188,13 @@ export const sendEmailWithGraph = async ({ emailData, boardId }) => {
       }))
     }
 
-    // Helper para convertir texto plano a HTML
-    const formatBodyToHTML = (text) => {
-      if (!text) return ''
-      // Convierte saltos de línea a <br>
-      return text.replace(/\n/g, '<br>')
-    }
-
     // Build the emailSendData JSON
     const emailSendData = {
       message: {
         subject: subject || 'No Subject',
         body: {
           contentType: 'HTML', // Puedes cambiar a "HTML" si el cuerpo del mensaje tiene formato HTML
-          content: formatBodyToHTML(body) || 'No content', // Convierte el cuerpo a HTML
+          content: body || 'No content', // Convierte el cuerpo a HTML
         },
         toRecipients: formatRecipients(send_to),
         ccRecipients: formatRecipients(copy_to),

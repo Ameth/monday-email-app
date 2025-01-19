@@ -194,7 +194,7 @@ app.post('/webhook', async (req, res) => {
       })
 
       // Get the email body with parameters
-      const { newBody: bodyEmail } = await getBodyEmail({
+      const { bodyEmail } = await getBodyEmail({
         pulseId,
         bodyColumnId: mapping.bodyTemplate,
         variableMapping: mapping.variables,

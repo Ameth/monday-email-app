@@ -45,6 +45,7 @@ const unescapeHTML = (text) => {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/\n/g, '<br>')
 }
 
 export async function getEmails({ pulseId, emailsMapping }) {
@@ -188,7 +189,6 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
     }, {})
 
     const rawBodyText = columnValues[bodyColumnId]?.text || ''
-    const unescapedBodyText = unescapeHTML(rawBodyText)
 
     // console.log(columnValues)
     // console.log('****************************')
@@ -200,12 +200,14 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
     // console.log(variables)
 
     // Realizamos el reemplazo de las variables en el texto del cuerpo
-    const newBody = unescapedBodyText.replace(
+    const newBody = rawBodyText.replace(
       /\{(.*?)\}/g,
       (_, variable) => variables[variable] || `{${variable}}`
     )
 
-    return { newBody }
+    const bodyEmail = unescapeHTML(newBody)
+
+    return { bodyEmail }
   } catch (error) {
     console.error('Error al obtener el cuerpo del correo:', error)
     throw error
