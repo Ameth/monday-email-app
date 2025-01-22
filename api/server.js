@@ -16,6 +16,7 @@ import {
   getAssets,
   getBodyEmail,
   getColumnsList,
+  getAttachmentColumns,
 } from '../src/getData.js'
 // import columnMapping from '../src/config/columnMapping.js'
 // import { getVariables, updateVariables } from '../src/utils/mappingVariables.js'
@@ -161,11 +162,27 @@ app.get('/column-list/:boardId', async (req, res) => {
   try {
     const { boardId } = req.params
     const columns = await getColumnsList({ boardId })
-    res.status(200).json(columns)
+    res.status(200).json({ columns })
   } catch (error) {
     console.error('Error getting column list:', error)
     res.status(500).json({
       error: 'Error getting column list',
+      message: error.message,
+    })
+  }
+})
+
+app.get('/column-attachment/:boardId', async (req, res) => {
+  try {
+    const { boardId } = req.params
+
+    const columns = await getAttachmentColumns({ boardId })
+
+    res.status(200).json({ columns })
+  } catch (error) {
+    console.error('Error getting attachment columns:', error)
+    res.status(500).json({
+      error: 'Error getting attachment columns',
       message: error.message,
     })
   }

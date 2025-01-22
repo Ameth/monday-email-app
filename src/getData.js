@@ -214,14 +214,65 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
   }
 }
 
+export async function getColumnsMirror({ pulseId, columnId }) {
+  try {
+    const query = `
+      query {
+        items(ids: ${pulseId}) {
+          column_values(ids: "${columnId}") {
+            ... on MirrorValue {
+              mirrored_items {
+                mirrored_value {
+                  __typename
+                }
+              }
+            }
+          }
+        }
+      }
+    `
+
+    const response = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: JSON.stringify({ query }),
+    })
+
+    const res = await response.json()
+    const mirroredItems =
+      res.data?.items?.[0]?.column_values?.[0]?.mirrored_items || []
+
+    // Verificar si refleja archivos (FileValue)
+    const isMirrorFile = mirroredItems.some(
+      (item) => item.mirrored_value?.__typename === 'FileValue'
+    )
+
+    return { isMirrorFile }
+  } catch (error) {
+    console.error('Error analyzing mirror column:', error)
+    throw error
+  }
+}
+
 export async function getAssets({ pulseId, attachmentsColumnId }) {
   try {
     const query = `
-      {
+      query {
         items(ids: ${pulseId}) {
           column_values(ids: "${attachmentsColumnId}") {
             id
+            type
             value
+            ... on MirrorValue {
+              mirrored_items {
+                linked_item {
+                  id
+                }
+              }
+            }
           }
           assets {
             id
@@ -231,7 +282,7 @@ export async function getAssets({ pulseId, attachmentsColumnId }) {
         }
       }
     `
-    // console.log(query)
+
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
@@ -243,25 +294,65 @@ export async function getAssets({ pulseId, attachmentsColumnId }) {
 
     const res = await response.json()
     const item = res.data?.items?.[0]
-    const assets = item?.assets || []
+    const columnValue = item?.column_values?.[0]
 
-    // Parsear los assetId del campo value (columna de archivos)
-    const attachmentsColumnValue = item?.column_values?.[0]?.value
-    const parsedValue = attachmentsColumnValue
-      ? JSON.parse(attachmentsColumnValue)
+    if (columnValue?.type === 'mirror') {
+      // Usar la función para verificar si es un mirror de archivos
+      const { isMirrorFile } = await getColumnsMirror({
+        pulseId,
+        columnId: attachmentsColumnId,
+      })
+
+      if (isMirrorFile) {
+        // Procesar archivos reflejados
+        const mirroredItems = columnValue.mirrored_items || []
+        const mirrorFileAssets = []
+
+        for (const mirroredItem of mirroredItems) {
+          const linkedItemId = mirroredItem.linked_item?.id
+
+          if (linkedItemId) {
+            const mirrorQuery = `
+              query {
+                items(ids: ${linkedItemId}) {
+                  assets {
+                    id
+                    public_url
+                    name
+                  }
+                }
+              }
+            `
+
+            const mirrorResponse = await fetch('https://api.monday.com/v2', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${TOKEN}`,
+              },
+              body: JSON.stringify({ query: mirrorQuery }),
+            })
+
+            const mirrorRes = await mirrorResponse.json()
+            mirrorFileAssets.push(...(mirrorRes.data?.items?.[0]?.assets || []))
+          }
+        }
+
+        return mirrorFileAssets
+      }
+    }
+
+    // Procesar archivos nativos
+    const parsedValue = columnValue?.value
+      ? JSON.parse(columnValue.value)
       : { files: [] }
-    const attachmentAssetIds = parsedValue.files.map((file) => file.assetId) // Obtener los IDs de los archivos
+    const nativeAssetIds = parsedValue.files.map((file) => file.assetId)
 
-    // Filtrar los assets por los IDs obtenidos de la columna
-    const filteredAssets = assets.filter((asset) =>
-      attachmentAssetIds.map(String).includes(asset.id.toString())
+    const nativeFilteredAssets = item?.assets?.filter((asset) =>
+      nativeAssetIds.map(String).includes(asset.id.toString())
     )
 
-    // console.log('Assets:', assets)
-    // console.log('Attachment IDs:', attachmentAssetIds)
-    // console.log('Filtered Assets:', filteredAssets)
-
-    return filteredAssets // Retorna solo los archivos de la columna mapeada
+    return nativeFilteredAssets
   } catch (error) {
     console.error('Error al obtener los adjuntos del correo:', error)
     throw error
@@ -271,13 +362,13 @@ export async function getAssets({ pulseId, attachmentsColumnId }) {
 export async function getColumnsList({ boardId }) {
   try {
     const query = `
-      {
-        boards (ids: ${boardId}) {
+      query {
+        boards(ids: ${boardId}) {
           columns {
             id
             title
             type
-          }		
+          }
         }
       }
     `
@@ -292,10 +383,90 @@ export async function getColumnsList({ boardId }) {
     })
 
     const res = await response.json()
-    const columns = res.data.boards ? res.data.boards[0] : []
-    return columns
+
+    // Asegúrate de que siempre retorna un arreglo
+    return res.data?.boards?.[0]?.columns || []
   } catch (error) {
-    console.error('Error al obtener el listado de las columnas:', error)
+    console.error('Error getting columns list:', error)
+    throw error
+  }
+}
+
+export async function getFirstPulseId({ boardId }) {
+  try {
+    const query = `
+      query {
+        boards(ids: ${boardId}) {
+          items_page {
+            items {
+              id
+              name
+            }
+          }
+        }
+      }
+    `
+
+    const response = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+      },
+      body: JSON.stringify({ query }),
+    })
+
+    const res = await response.json()
+    const items = res.data?.boards?.[0]?.items_page?.items || []
+    if (items.length === 0) {
+      throw new Error(`No items found in board with ID ${boardId}`)
+    }
+
+    // Retornar el primer pulseId
+    return items[0].id
+  } catch (error) {
+    console.error('Error getting first pulseId:', error)
+    throw error
+  }
+}
+
+export async function getAttachmentColumns({ boardId }) {
+  try {
+    // Obtener el primer pulseId del board
+    const pulseId = await getFirstPulseId({ boardId })
+
+    // Obtener todas las columnas del board
+    const columns = await getColumnsList({ boardId })
+
+    // console.log('Columns:', columns)
+
+    // Verificar que columns es un arreglo
+    if (!Array.isArray(columns)) {
+      throw new Error('Columns is not an array')
+    }
+
+    // Filtrar las columnas de tipo file y verificar las columnas mirror
+    const attachmentColumns = []
+
+    for (const column of columns) {
+      if (column.type === 'file') {
+        // Agregar columnas de tipo file directamente
+        attachmentColumns.push(column)
+      } else if (column.type === 'mirror') {
+        // Verificar si la columna mirror refleja archivos (FileValue)
+        const { isMirrorFile } = await getColumnsMirror({
+          pulseId,
+          columnId: column.id,
+        })
+        if (isMirrorFile) {
+          attachmentColumns.push(column)
+        }
+      }
+    }
+
+    return attachmentColumns
+  } catch (error) {
+    console.error('Error getting attachment columns:', error)
     throw error
   }
 }
