@@ -274,6 +274,16 @@ app.get('/', (req, res) => {
   res.status(200).json({ message: 'Ready' })
 })
 
+// Catch-all for undefined routes
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Endpoint not found",
+    message: "The requested resource does not exist on this server",
+    path: req.originalUrl,
+    method: req.method,
+  });
+});
+
 // app.post('/webhook', (req, res) => {
 //   const { boardId, pulseId } = req.body.event
 //   console.log(JSON.stringify({ boardId: boardId, pulseId: pulseId }))
