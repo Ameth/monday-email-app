@@ -34,8 +34,8 @@ import {
 
 const app = express()
 
-const PORT_HTTPS = 443
-const PORT_HTTP = 80
+// const PORT_HTTPS = 443
+// const PORT_HTTP = 80
 const PORT_PROD = 3000
 
 // Enable CORS
@@ -275,14 +275,14 @@ app.get('/', (req, res) => {
 })
 
 // Catch-all for undefined routes
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Endpoint not found",
-    message: "The requested resource does not exist on this server",
-    path: req.originalUrl,
-    method: req.method,
-  });
-});
+// app.use((req, res) => {
+//   res.status(404).json({
+//     error: "Endpoint not found",
+//     message: "The requested resource does not exist on this server",
+//     path: req.originalUrl,
+//     method: req.method,
+//   });
+// });
 
 // app.post('/webhook', (req, res) => {
 //   const { boardId, pulseId } = req.body.event
