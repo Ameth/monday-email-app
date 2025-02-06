@@ -464,7 +464,7 @@ export async function getAttachmentColumns({ boardId }) {
       }
     }
 
-    return attachmentColumns
+    return  
   } catch (error) {
     console.error('Error getting attachment columns:', error)
     throw error
