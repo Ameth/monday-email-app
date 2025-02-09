@@ -271,6 +271,7 @@ app.get('/env-var', (req, res) => {
 
   const allEnvVarsExist = envVars.every(envVar => {
     const value = process.env[envVar];
+    // console.log(`${envVar}: ${value}`);
     return value !== undefined && value !== '';
   });
 
