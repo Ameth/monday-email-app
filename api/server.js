@@ -266,17 +266,20 @@ app.get('/env-var', (req, res) => {
     'REDIRECT_URI',
     'AWS_REGION',
     'AWS_ACCESS_KEY_ID',
-    'AWS_SECRET_ACCESS_KEY'
-  ];
+    'AWS_SECRET_ACCESS_KEY',
+  ]
 
-  const allEnvVarsExist = envVars.every(envVar => {
-    const value = process.env[envVar];
-    // console.log(`${envVar}: ${value}`);
-    return value !== undefined && value !== '';
-  });
+  let missingVars = envVars.filter((envVar) => !process.env[envVar])
 
-  res.status(200).json({ allEnvVarsExist });
-});
+  if (missingVars.length > 0) {
+    console.error(`Missing environment variables: ${missingVars.join(', ')}`)
+    return res
+      .status(500)
+      .json({ error: `Missing environment variables: ${missingVars.join(', ')}` })
+  }
+
+  res.status(200).json({ allEnvVarsExist: true })
+})
 
 app.get('/', (req, res) => {
   res.status(200).json({ message: 'Ready' })
