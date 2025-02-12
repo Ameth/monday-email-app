@@ -57,10 +57,15 @@ export async function getEmails({ pulseId, emailsMapping }) {
           column_values(ids:[${emailColumns
             .map((id) => `"${id}"`)
             .join(',')}]) {
-            ... on MirrorValue {
-              display_value
+             ... on MirrorValue {
+                display_value
+                id
+                type
+              }
+              text
+              value
+              type
               id
-            }
           }
         }
       }
@@ -71,22 +76,38 @@ export async function getEmails({ pulseId, emailsMapping }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
 
     const res = await response.json()
+
+    if (!res.data || !res.data.items || res.data.items.length === 0) {
+      throw new Error('No se encontraron datos para el Pulse ID proporcionado.')
+    }
+
     const columnValues = res.data.items[0].column_values
+
+    function extractEmail(columnId) {
+      const column = columnValues.find((col) => col.id === columnId)
+      if (!column) return ''
+
+      if (column.type === 'mirror') {
+        return column.display_value || ''
+      }
+
+      if (column.type === 'email') {
+        return column.text || ''
+      }
+
+      return ''
+    }
+
     return {
-      toEmails:
-        columnValues.find((col) => col.id === emailsMapping.to)
-          ?.display_value || '',
-      ccEmails:
-        columnValues.find((col) => col.id === emailsMapping.cc)
-          ?.display_value || '',
-      bccEmails:
-        columnValues.find((col) => col.id === emailsMapping.bcc)
-          ?.display_value || '',
+      toEmails: extractEmail(emailsMapping.to),
+      ccEmails: extractEmail(emailsMapping.cc),
+      bccEmails: extractEmail(emailsMapping.bcc),
     }
   } catch (error) {
     console.error('Error al obtener los correos:', error)
@@ -101,12 +122,22 @@ export async function getSubject({
 }) {
   try {
     const query = `
-      {
+    {
         items(ids: ${pulseId}) {
           column_values {
             column {
               id
               title
+            }
+            ... on MirrorValue {
+              display_value
+              id
+              type
+            }
+            ... on FormulaValue {
+              display_value
+              id
+              type
             }
             id
             type
@@ -117,30 +148,85 @@ export async function getSubject({
       }
     `
 
+    // console.log(query)
     const response = await fetch('https://api.monday.com/v2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
 
     const res = await response.json()
+
+    // 🔹 Validamos si la respuesta contiene errores y los manejamos
+    if (res.errors) {
+      console.warn(
+        'Se encontraron errores en la consulta de Monday:',
+        res.errors
+      )
+
+      // Filtramos los errores específicos de fórmulas con mirrors y continuamos
+      const isFormulaMirrorError = res.errors.some(
+        (error) => error.extensions.code === 'FORMULA_TO_MIRROR_NOT_SUPPORTED'
+      )
+
+      if (isFormulaMirrorError) {
+        console.warn(
+          'Se ignorará la columna fórmula porque usa una mirror column.'
+        )
+      }
+    }
+
+    // 🔹 Validamos que haya datos antes de continuar
+    if (
+      !res.data ||
+      !res.data.items ||
+      res.data.items.length === 0 ||
+      !res.data.items[0]
+    ) {
+      throw new Error(
+        'No se encontraron datos válidos en la respuesta de Monday.'
+      )
+    }
+
     const item = res.data.items[0]
+
     const columnValues = item.column_values.reduce((acc, col) => {
-      acc[col.id] = col.value ? JSON.parse(col.value) : null
+      // Ignorar columnas nulas que generaron error en la consulta
+      if (!col) return acc
+
+      if (col.type === 'text' && col.value) {
+        try {
+          acc[col.id] = { text: JSON.parse(col.value) }
+        } catch (error) {
+          acc[col.id] = { text: col.value }
+        }
+      } else if (col.type === 'mirror' && col.display_value) {
+        acc[col.id] = { text: col.display_value }
+      } else if (col.type === 'formula') {
+        if (col.display_value) {
+          acc[col.id] = { text: col.display_value }
+        } else {
+          console.warn(
+            `Se ignoró la columna de fórmula '${col.id}' porque depende de una mirror column.`
+          )
+          acc[col.id] = { text: '' } // Evitamos null para que no rompa la app
+        }
+      } else {
+        acc[col.id] = col.value ? JSON.parse(col.value) : null
+      }
       return acc
     }, {})
 
-    // console.log(columnValues)
-
     const rawSubjectText = columnValues[subjectColumnId]?.text || ''
 
-    // Recuperamos las variables que no están dentro de column_values (por ejemplo, 'name')
+    // Reemplazamos las variables
     const variables = replaceVariables({ variableMapping, columnValues, item })
 
-    // Realizamos el reemplazo de las variables en el texto del asunto
+    // Reemplazo de variables en el subject
     const subject = rawSubjectText.replace(
       /\{(.*?)\}/g,
       (_, variable) => variables[variable] || `{${variable}}`
@@ -149,7 +235,8 @@ export async function getSubject({
     return { subject }
   } catch (error) {
     console.error('Error al obtener el asunto:', error)
-    throw error
+    // throw error
+    return { subject: '' }
   }
 }
 
@@ -163,6 +250,16 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
               id
               title
             }
+            ... on MirrorValue {
+              display_value
+              id
+              type
+            }
+            ... on FormulaValue {
+              display_value
+              id
+              type
+            }
             id
             type
             value
@@ -177,16 +274,74 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
 
     const res = await response.json()
+
+    // 🔹 Validamos si la respuesta contiene errores y los manejamos
+    if (res.errors) {
+      console.warn(
+        'Se encontraron errores en la consulta de Monday:',
+        res.errors
+      )
+
+      // Filtramos los errores específicos de fórmulas con mirrors y continuamos
+      const isFormulaMirrorError = res.errors.some(
+        (error) => error.extensions.code === 'FORMULA_TO_MIRROR_NOT_SUPPORTED'
+      )
+
+      if (isFormulaMirrorError) {
+        console.warn(
+          'Se ignorará la columna fórmula porque usa una mirror column.'
+        )
+      }
+    }
+
+    // 🔹 Validamos que haya datos antes de continuar
+    if (
+      !res.data ||
+      !res.data.items ||
+      res.data.items.length === 0 ||
+      !res.data.items[0]
+    ) {
+      throw new Error(
+        'No se encontraron datos válidos en la respuesta de Monday.'
+      )
+    }
+
     const item = res.data.items[0]
+
     const columnValues = item.column_values.reduce((acc, col) => {
-      acc[col.id] = col.value ? JSON.parse(col.value) : null
+      // Ignorar columnas nulas que generaron error en la consulta
+      if (!col) return acc
+
+      if (col.type === 'text' && col.value) {
+        try {
+          acc[col.id] = { text: JSON.parse(col.value) }
+        } catch (error) {
+          acc[col.id] = { text: col.value }
+        }
+      } else if (col.type === 'mirror' && col.display_value) {
+        acc[col.id] = { text: col.display_value }
+      } else if (col.type === 'formula') {
+        if (col.display_value) {
+          acc[col.id] = { text: col.display_value }
+        } else {
+          console.warn(
+            `Se ignoró la columna de fórmula '${col.id}' porque depende de una mirror column.`
+          )
+          acc[col.id] = { text: '' } // Evitamos null para que no rompa la app
+        }
+      } else {
+        acc[col.id] = col.value ? JSON.parse(col.value) : null
+      }
       return acc
     }, {})
+
+    // console.log(columnValues)
 
     const rawBodyText = columnValues[bodyColumnId]?.text || ''
 
@@ -210,7 +365,8 @@ export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
     return { bodyEmail }
   } catch (error) {
     console.error('Error al obtener el cuerpo del correo:', error)
-    throw error
+    // throw error
+    return { bodyEmail: '' }
   }
 }
 
@@ -237,6 +393,7 @@ export async function getColumnsMirror({ pulseId, columnId }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
@@ -288,6 +445,7 @@ export async function getAssets({ pulseId, attachmentsColumnId }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
@@ -378,6 +536,7 @@ export async function getColumnsList({ boardId }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
@@ -412,6 +571,7 @@ export async function getFirstPulseId({ boardId }) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
       },
       body: JSON.stringify({ query }),
     })
@@ -435,6 +595,8 @@ export async function getAttachmentColumns({ boardId }) {
     // Obtener el primer pulseId del board
     const pulseId = await getFirstPulseId({ boardId })
 
+    // console.log('Pulse ID:', pulseId)
+
     // Obtener todas las columnas del board
     const columns = await getColumnsList({ boardId })
 
@@ -449,6 +611,7 @@ export async function getAttachmentColumns({ boardId }) {
     const attachmentColumns = []
 
     for (const column of columns) {
+      // console.log('In loop:', column)
       if (column.type === 'file') {
         // Agregar columnas de tipo file directamente
         attachmentColumns.push(column)
@@ -464,7 +627,7 @@ export async function getAttachmentColumns({ boardId }) {
       }
     }
 
-    return  
+    return attachmentColumns
   } catch (error) {
     console.error('Error getting attachment columns:', error)
     throw error

@@ -178,6 +178,8 @@ app.get('/column-attachment/:boardId', async (req, res) => {
 
     const columns = await getAttachmentColumns({ boardId })
 
+    // console.log('Columns:', columns)
+
     res.status(200).json({ columns })
   } catch (error) {
     console.error('Error getting attachment columns:', error)
