@@ -5,7 +5,7 @@ dotenv.config()
 
 const TOKEN = process.env.TOKEN_MONDAY
 
-// 🔹 Caché para almacenar los datos de la consulta y evitar llamadas duplicadas
+// Caché para almacenar los datos de la consulta y evitar llamadas duplicadas
 const mondayCache = new Map()
 
 async function fetchMondayData(pulseId) {
