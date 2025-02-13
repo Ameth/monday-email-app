@@ -5,79 +5,6 @@ dotenv.config()
 
 const TOKEN = process.env.TOKEN_MONDAY
 
-// Caché para almacenar los datos de la consulta y evitar llamadas duplicadas
-const mondayCache = new Map()
-
-async function fetchMondayData(pulseId) {
-  // Si ya hemos hecho la consulta antes, retornamos el caché
-  if (mondayCache.has(pulseId)) {
-    return mondayCache.get(pulseId)
-  }
-
-  const query = `
-    {
-      items(ids: ${pulseId}) {
-        column_values {
-          column {
-            title
-          }
-          ... on MirrorValue {
-            display_value
-          }
-          ... on FormulaValue {
-            display_value
-          }
-          ... on BoardRelationValue {
-            display_value 
-          }
-          id
-          type
-          value
-        }
-        name
-      }
-    }
-  `
-
-  const response = await fetch('https://api.monday.com/v2', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${TOKEN}`,
-      'API-Version': '2025-01',
-    },
-    body: JSON.stringify({ query }),
-  })
-
-  // console.log('Se ejecuto el fetch')
-
-  const res = await response.json()
-
-  // Validamos si la respuesta contiene errores y los manejamos
-  if (res.errors) {
-    console.warn('Se encontraron errores en la consulta de Monday:', res.errors)
-  }
-
-  // Validamos que haya datos antes de continuar
-  if (
-    !res.data ||
-    !res.data.items ||
-    res.data.items.length === 0 ||
-    !res.data.items[0]
-  ) {
-    throw new Error(
-      'No se encontraron datos válidos en la respuesta de Monday.'
-    )
-  }
-
-  const item = res.data.items[0]
-
-  // Guardamos en caché para futuras llamadas
-  mondayCache.set(pulseId, item)
-
-  return item
-}
-
 const variablesValues = ({ variableMapping, columnValues, item }) => {
   const variables = variableMapping.reduce(
     (acc, { variableName, columnId }) => {
@@ -210,7 +137,64 @@ export async function getSubject({
   variableMapping,
 }) {
   try {
-    const item = await fetchMondayData(pulseId)
+    const query = `
+    {
+      items(ids: ${pulseId}) {
+        column_values {
+          column {
+            title
+          }
+          ... on MirrorValue {
+            display_value
+          }
+          ... on FormulaValue {
+            display_value
+          }
+          ... on BoardRelationValue {
+            display_value 
+          }
+          id
+          type
+          value
+        }
+        name
+      }
+    }
+  `
+
+    const response = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
+      },
+      body: JSON.stringify({ query }),
+    })
+
+    const res = await response.json()
+
+    // Validamos si la respuesta contiene errores y los manejamos
+    if (res.errors) {
+      console.warn(
+        'Se encontraron errores en la consulta de Monday:',
+        res.errors
+      )
+    }
+
+    // Validamos que haya datos antes de continuar
+    if (
+      !res.data ||
+      !res.data.items ||
+      res.data.items.length === 0 ||
+      !res.data.items[0]
+    ) {
+      throw new Error(
+        'No se encontraron datos válidos en la respuesta de Monday.'
+      )
+    }
+
+    const item = res.data.items[0]
 
     const columnValues = item.column_values.reduce((acc, col) => {
       // Ignorar columnas nulas que generaron error en la consulta
@@ -252,7 +236,64 @@ export async function getSubject({
 
 export async function getBodyEmail({ pulseId, bodyColumnId, variableMapping }) {
   try {
-    const item = await fetchMondayData(pulseId)
+    const query = `
+    {
+      items(ids: ${pulseId}) {
+        column_values {
+          column {
+            title
+          }
+          ... on MirrorValue {
+            display_value
+          }
+          ... on FormulaValue {
+            display_value
+          }
+          ... on BoardRelationValue {
+            display_value 
+          }
+          id
+          type
+          value
+        }
+        name
+      }
+    }
+  `
+
+    const response = await fetch('https://api.monday.com/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${TOKEN}`,
+        'API-Version': '2025-01',
+      },
+      body: JSON.stringify({ query }),
+    })
+
+    const res = await response.json()
+
+    // Validamos si la respuesta contiene errores y los manejamos
+    if (res.errors) {
+      console.warn(
+        'Se encontraron errores en la consulta de Monday:',
+        res.errors
+      )
+    }
+
+    // Validamos que haya datos antes de continuar
+    if (
+      !res.data ||
+      !res.data.items ||
+      res.data.items.length === 0 ||
+      !res.data.items[0]
+    ) {
+      throw new Error(
+        'No se encontraron datos válidos en la respuesta de Monday.'
+      )
+    }
+
+    const item = res.data.items[0]
 
     const columnValues = item.column_values.reduce((acc, col) => {
       // Ignorar columnas nulas que generaron error en la consulta
