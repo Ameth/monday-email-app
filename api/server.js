@@ -277,7 +277,9 @@ app.get('/env-var', (req, res) => {
     console.error(`Missing environment variables: ${missingVars.join(', ')}`)
     return res
       .status(500)
-      .json({ error: `Missing environment variables: ${missingVars.join(', ')}` })
+      .json({
+        error: `Missing environment variables: ${missingVars.join(', ')}`,
+      })
   }
 
   res.status(200).json({ allEnvVarsExist: true })
